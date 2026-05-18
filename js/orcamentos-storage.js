@@ -215,6 +215,7 @@ function criarOrcamento(registro) {
         console.warn("POST orçamento — fallback local:", e);
     }
     var list = obterOrcamentosSoLocalStorage();
+    registro.__salvoSomenteLocalEm = Date.now();
     list.unshift(registro);
     salvarListaOrcamentos(list);
     return registro;

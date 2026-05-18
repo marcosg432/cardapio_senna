@@ -221,10 +221,13 @@ function gerarOrcamento() {
         if (typeof criarOrcamento !== "function") {
             throw new Error("criarOrcamento não disponível (orcamentos-storage.js).");
         }
-        criarOrcamento(registro);
+        var salvo = criarOrcamento(registro);
+        if (salvo && salvo.__salvoSomenteLocalEm) {
+            throw new Error("Orçamento salvo apenas neste navegador; API indisponível.");
+        }
     } catch (e) {
         console.error(e);
-        alert("Não foi possível salvar o orçamento. Verifique o armazenamento do navegador ou bloqueios.");
+        alert("Não foi possível salvar o orçamento no painel. Tente novamente em instantes ou avise a confeitaria pelo WhatsApp.");
         return;
     }
 
