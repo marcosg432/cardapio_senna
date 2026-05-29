@@ -51,6 +51,17 @@ function campoTrimOrcamento(id) {
     return String(el.value).trim();
 }
 
+var OBS_SUPORTES_CORTESIA = "Os suportes devem ser devolvidos na semana seguinte à festa.";
+
+function valorEntregaSuporteOrcamento() {
+    var el = document.querySelector('input[name="entrega-suporte"]:checked');
+    return el && el.value != null ? String(el.value).trim() : "";
+}
+
+function entregaSuporteEhCortesia(valor) {
+    return /cortesia/i.test(String(valor || ""));
+}
+
 function montarMensagemOrcamento(orcId) {
     var nome = campoTrimOrcamento("nome");
     var telefone = campoTrimOrcamento("telefone");
@@ -65,6 +76,7 @@ function montarMensagemOrcamento(orcId) {
     var endereco = campoTrimOrcamento("endereco");
     var pagamento = campoTrimOrcamento("pagamento");
     var observacao = campoTrimOrcamento("observacao");
+    var entregaSuporte = valorEntregaSuporteOrcamento();
 
     var valorOriginal = calcularTotal();
     var minPadrao = 50;
@@ -91,6 +103,9 @@ function montarMensagemOrcamento(orcId) {
     msg += "Local: " + (localEvento || "-") + "\n";
     msg += "Entrega/Retirada: " + (tipo || "-") + "\n";
     if (tipo === "Entrega") msg += "Endereço: " + (endereco || "-") + "\n";
+    msg += "\nFORMA DE ENTREGA E SUPORTE\n";
+    msg += (entregaSuporte || "-") + "\n";
+    if (entregaSuporteEhCortesia(entregaSuporte)) msg += "Obs.: " + OBS_SUPORTES_CORTESIA + "\n";
     msg += "\nPagamento (ref.): " + (pagamento || "-") + "\n";
     msg += "Observações: " + (observacao || "-") + "\n\n";
     msg += "CLIENTE\n";
@@ -124,6 +139,7 @@ function validarFormularioOrcamento() {
     if (!localEvento) return "Informe o local do evento.";
     if (!tipo) return "Selecione entrega ou retirada.";
     if (tipo === "Entrega" && !endereco) return "Preencha o endereço para entrega.";
+    if (!valorEntregaSuporteOrcamento()) return "Selecione a forma de entrega e suporte.";
 
     return null;
 }
@@ -159,6 +175,7 @@ function gerarOrcamento() {
     var endereco = campoTrimOrcamento("endereco");
     var pagamento = campoTrimOrcamento("pagamento");
     var observacao = campoTrimOrcamento("observacao");
+    var entregaSuporte = valorEntregaSuporteOrcamento();
 
     var entregaTexto = tipo === "Entrega" ? "Entrega — " + (endereco || "") : (tipo || "");
 
@@ -179,6 +196,8 @@ function gerarOrcamento() {
         convidados: parseInt(convidados, 10) || 0,
         local: localEvento,
         entrega: entregaTexto,
+        entrega_suporte: entregaSuporte || null,
+        entrega_suporte_obs: entregaSuporteEhCortesia(entregaSuporte) ? OBS_SUPORTES_CORTESIA : null,
         observacoes: observacao || "",
         itens: itens,
         valor_original: valorOriginal,

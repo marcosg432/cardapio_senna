@@ -64,6 +64,13 @@ function gerarOrcamentoPropostaPDF(orcamento) {
     linha("Data do evento: " + (eventoDataOrc(orcamento) || "-"), 6);
     linha("Convidados: " + (orcamento.convidados != null ? orcamento.convidados : "-") + "  |  Local: " + (localOrc(orcamento) || "-"), 6);
     linha("Entrega / retirada: " + (orcamento.entrega || orcamento.entrega_retirada || "-"), 6);
+    var entregaSuportePdf = String(orcamento.entrega_suporte || "").trim();
+    if (entregaSuportePdf) {
+        linha("Forma de entrega/suporte: " + entregaSuportePdf, 6);
+        if (/cortesia/i.test(entregaSuportePdf)) {
+            linha("Obs.: Os suportes devem ser devolvidos na semana seguinte a festa.", 6);
+        }
+    }
 
     y += 2;
     doc.setFontSize(12);

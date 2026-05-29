@@ -125,8 +125,15 @@
         if (cpfW) msg += "CPF: " + cpfW + "\n";
         if (rgW) msg += "RG: " + rgW + "\n";
         msg += "Tipo do evento: " + (eventoTipoOrc(o) || "-") + "\n";
-        msg += "Data do evento: " + (eventoDataOrc(o) || "-") + "\n\n";
-        msg += "ITENS:\n";
+        msg += "Data do evento: " + (eventoDataOrc(o) || "-") + "\n";
+        var entSupW = String(o.entrega_suporte || "").trim();
+        if (entSupW) {
+            msg += "Forma de entrega/suporte: " + entSupW + "\n";
+            if (/cortesia/i.test(entSupW)) {
+                msg += "Obs.: " + (o.entrega_suporte_obs && String(o.entrega_suporte_obs).trim() !== "" ? o.entrega_suporte_obs : "Os suportes devem ser devolvidos na semana seguinte à festa.") + "\n";
+            }
+        }
+        msg += "\nITENS:\n";
         (o.itens || []).forEach(function (it) {
             var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
             var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
@@ -171,6 +178,20 @@
         document.getElementById("view-convidados").textContent = o.convidados != null ? o.convidados : "—";
         document.getElementById("view-local").textContent = localOrc(o) || "—";
         document.getElementById("view-entrega").textContent = (o.entrega || o.entrega_retirada || "") + (o.endereco ? " — " + o.endereco : "");
+        var entregaSuporteV = String(o.entrega_suporte || "").trim();
+        var elEntSup = document.getElementById("view-entrega-suporte");
+        if (elEntSup) elEntSup.textContent = entregaSuporteV || "—";
+        var elEntSupObs = document.getElementById("view-entrega-suporte-obs");
+        if (elEntSupObs) {
+            var cortesia = /cortesia/i.test(entregaSuporteV) || (o.entrega_suporte_obs != null && String(o.entrega_suporte_obs).trim() !== "");
+            if (cortesia) {
+                elEntSupObs.textContent = "Observação: " + (o.entrega_suporte_obs && String(o.entrega_suporte_obs).trim() !== "" ? o.entrega_suporte_obs : "Os suportes devem ser devolvidos na semana seguinte à festa.");
+                elEntSupObs.hidden = false;
+            } else {
+                elEntSupObs.textContent = "";
+                elEntSupObs.hidden = true;
+            }
+        }
         document.getElementById("view-obs").textContent = o.observacoes || "—";
 
         function setCampoContrato(id, valor) {
@@ -452,6 +473,8 @@
             degustacao_obs: strInput("degustacao-obs") || null,
             forma_pagamento: strInput("forma-pagamento-adm") || null,
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
+            entrega_suporte: orcamentoAtual && orcamentoAtual.entrega_suporte != null ? orcamentoAtual.entrega_suporte : null,
+            entrega_suporte_obs: orcamentoAtual && orcamentoAtual.entrega_suporte_obs != null ? orcamentoAtual.entrega_suporte_obs : null,
             entrada: entrada,
             restante: restante,
             data_pagamento_entrada: strInput("data-pag-entrada") || null,

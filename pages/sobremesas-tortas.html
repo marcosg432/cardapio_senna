@@ -187,6 +187,38 @@
                     <label for="endereco">Endereço de entrega *</label>
                     <input type="text" id="endereco" placeholder="Rua, número, bairro, cidade">
                 </div>
+                <p class="carrinho-form-section-title">Forma de entrega e suporte *</p>
+                <div class="entrega-suporte" id="entrega-suporte" role="radiogroup" aria-label="Forma de entrega e suporte">
+                    <label class="entrega-suporte-opcao">
+                        <input type="radio" name="entrega-suporte" value="Apenas retirada dos doces sem entrega">
+                        <span class="entrega-suporte-card">
+                            <span class="entrega-suporte-titulo">Apenas retirada dos doces</span>
+                            <span class="entrega-suporte-desc">Sem entrega — você retira os doces no local combinado.</span>
+                        </span>
+                    </label>
+                    <label class="entrega-suporte-opcao">
+                        <input type="radio" name="entrega-suporte" value="Apenas entrega sem montagem">
+                        <span class="entrega-suporte-card">
+                            <span class="entrega-suporte-titulo">Apenas entrega sem montagem</span>
+                            <span class="entrega-suporte-desc">Entregamos os doces no local, sem montagem da mesa.</span>
+                        </span>
+                    </label>
+                    <label class="entrega-suporte-opcao">
+                        <input type="radio" name="entrega-suporte" value="Entrega dos doces com montagem - suportes da decoração">
+                        <span class="entrega-suporte-card">
+                            <span class="entrega-suporte-titulo">Entrega com montagem — suportes da decoração</span>
+                            <span class="entrega-suporte-desc">Entregamos e montamos a mesa usando os suportes da sua decoração.</span>
+                        </span>
+                    </label>
+                    <label class="entrega-suporte-opcao">
+                        <input type="radio" name="entrega-suporte" value="Entrega dos doces com montagem - suportes cortesia">
+                        <span class="entrega-suporte-card">
+                            <span class="entrega-suporte-titulo">Entrega com montagem — suportes cortesia</span>
+                            <span class="entrega-suporte-desc">Entregamos e montamos a mesa com nossos suportes cortesia.</span>
+                            <span class="entrega-suporte-nota">Os suportes devem ser devolvidos na semana seguinte à festa.</span>
+                        </span>
+                    </label>
+                </div>
                 <label for="pagamento">Forma de pagamento (referência)</label>
                 <select id="pagamento">
                     <option value="">Selecione</option>

@@ -155,6 +155,16 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         linhaCampoPlanilha("Telefone (fotógrafo):", orcCampo(orcamento, ["evento_fotografo_tel"], ""));
     });
 
+    var entregaSuporte = orcCampo(orcamento, ["entrega_suporte"], "");
+    var entregaSuporteCortesia = /cortesia/i.test(entregaSuporte) ||
+        (orcamento && orcamento.entrega_suporte_obs != null && String(orcamento.entrega_suporte_obs).trim() !== "");
+    molduraSecao("FORMA DE ENTREGA E SUPORTES", function () {
+        linhaCampoPlanilha("Forma escolhida:", entregaSuporte);
+        if (entregaSuporteCortesia) {
+            linhaCampoPlanilha("Observação:", "Os suportes deverão ser devolvidos na semana seguinte à festa.");
+        }
+    });
+
     molduraSecao("INFORMAÇÕES DO PAGAMENTO", function () {
         linhaCampoPlanilha("Valor total:", formatarMoedaPdf(vf));
         linhaCampoPlanilha("Entrada:", vEnt != null && !isNaN(vEnt) ? formatarMoedaPdf(vEnt) : "—");
