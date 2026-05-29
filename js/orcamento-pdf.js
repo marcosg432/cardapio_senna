@@ -122,6 +122,14 @@ function gerarOrcamentoPropostaPDF(orcamento) {
     y += 2;
     doc.setFontSize(10);
     linha("Forma de pagamento: " + (formaPagamentoOrc(orcamento) || "-"), 6);
+    if (orcamento.data_pagamento_entrada_prevista) {
+        var dppPdf = String(orcamento.data_pagamento_entrada_prevista);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dppPdf)) {
+            var pdppPdf = dppPdf.split("-");
+            dppPdf = pdppPdf[2] + "/" + pdppPdf[1] + "/" + pdppPdf[0];
+        }
+        linha("Data prevista p/ pagamento da entrada: " + dppPdf, 6);
+    }
     var ent = orcamento.entrada;
     var rest = orcamento.restante;
     if (typeof calcularValorRestanteOrcamento === "function" && (ent != null && ent !== "")) {

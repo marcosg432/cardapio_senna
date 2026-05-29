@@ -376,6 +376,14 @@
     resize: vertical;
 }
 
+.carrinho-form-hint {
+    margin: -0.6rem 0 1rem 0;
+    font-size: 0.76rem;
+    line-height: 1.4;
+    color: var(--marrom);
+    opacity: 0.72;
+}
+
 /* Forma de entrega e suporte — cards selecionáveis */
 .entrega-suporte {
     display: flex;

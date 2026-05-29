@@ -35,12 +35,19 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         garantirEspaco(14);
         var linhaBase = y;
         var hMin = 7;
-        var wRot = 50;
+        var wRot = 56;
         var xVal = margem + wRot + 3;
+        var wLabel = wRot - 4;
         var wVal = maxW - wRot - 5;
         var txt = valor == null || String(valor).trim() === "" ? "—" : String(valor);
+
+        doc.setFontSize(8.3);
+        doc.setFont(undefined, "bold");
+        var linhasLabel = doc.splitTextToSize(String(label), wLabel);
+        doc.setFont(undefined, "normal");
         var linhasVal = doc.splitTextToSize(txt, wVal);
-        var altura = Math.max(hMin, 3 + linhasVal.length * 4.1);
+        var nLin = Math.max(linhasLabel.length, linhasVal.length);
+        var altura = Math.max(hMin, 3 + nLin * 4.1);
 
         if (opcoes.fundoAmarelo) {
             doc.setFillColor(255, 250, 140);
@@ -50,11 +57,11 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         doc.setDrawColor(145, 128, 118);
         doc.setLineWidth(0.15);
         doc.line(margem, linhaBase + altura, margem + maxW, linhaBase + altura);
+        doc.line(margem + wRot, linhaBase, margem + wRot, linhaBase + altura);
 
-        doc.setFontSize(8.3);
         doc.setFont(undefined, "bold");
         doc.setTextColor(55, 45, 40);
-        doc.text(label, margem + 2, linhaBase + 5);
+        doc.text(linhasLabel, margem + 2, linhaBase + 5);
         doc.setFont(undefined, "normal");
         doc.setTextColor(30, 25, 22);
         doc.text(linhasVal, xVal, linhaBase + 5);
@@ -165,11 +172,17 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         }
     });
 
+    var dataPrevCliente = orcCampo(orcamento, ["data_pagamento_entrada_prevista"], "");
+    var dataQuitadoEm = orcCampo(orcamento, ["pagamento_valor_quitado_em"], "");
     molduraSecao("INFORMAÇÕES DO PAGAMENTO", function () {
         linhaCampoPlanilha("Valor total:", formatarMoedaPdf(vf));
         linhaCampoPlanilha("Entrada:", vEnt != null && !isNaN(vEnt) ? formatarMoedaPdf(vEnt) : "—");
-        linhaCampoPlanilha("Data do pgto ENTRADA:", formatarDataBr(orcCampo(orcamento, ["data_pagamento_entrada"], "")));
-        linhaCampoPlanilha("VALOR QUITADO EM:", formatarDataBr(orcCampo(orcamento, ["pagamento_valor_quitado_em"], "")));
+        if (dataPrevCliente && dataPrevCliente !== "—") {
+            linhaCampoPlanilha("Data prevista p/ pagamento da entrada:", formatarDataBr(dataPrevCliente));
+        }
+        if (dataQuitadoEm && dataQuitadoEm !== "—") {
+            linhaCampoPlanilha("VALOR QUITADO EM:", formatarDataBr(dataQuitadoEm));
+        }
         linhaCampoPlanilha("Forma de pagamento:", orcCampo(orcamento, ["forma_pagamento_ref", "forma_pagamento", "pagamento"], ""));
     });
 

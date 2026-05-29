@@ -153,6 +153,12 @@
         msg += "\nTotal de descontos: R$ " + somaD.toFixed(2).replace(".", ",");
         msg += "\nValor final: R$ " + Number(vf).toFixed(2).replace(".", ",");
         msg += "\n\nForma de pagamento: " + (formaPagamentoOrc(o) || "-");
+        var dppW = String(o.data_pagamento_entrada_prevista || "").trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dppW)) {
+            var pdppW = dppW.split("-");
+            dppW = pdppW[2] + "/" + pdppW[1] + "/" + pdppW[0];
+        }
+        if (dppW) msg += "\nData prevista p/ pagamento da entrada (cliente): " + dppW;
         var ent = o.entrada;
         var rest = o.restante;
         if (ent != null && ent !== "" || rest != null && rest !== "") {
@@ -191,6 +197,15 @@
                 elEntSupObs.textContent = "";
                 elEntSupObs.hidden = true;
             }
+        }
+        var elDataPagPrev = document.getElementById("view-data-pag-entrada-prevista");
+        if (elDataPagPrev) {
+            var dpp = String(o.data_pagamento_entrada_prevista || "").trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dpp)) {
+                var pdpp = dpp.split("-");
+                dpp = pdpp[2] + "/" + pdpp[1] + "/" + pdpp[0];
+            }
+            elDataPagPrev.textContent = dpp ? dpp : "—";
         }
         document.getElementById("view-obs").textContent = o.observacoes || "—";
 
@@ -321,7 +336,8 @@
 
         document.getElementById("entrada").value =
             o.entrada != null && o.entrada !== "" ? String(o.entrada).replace(".", ",") : "";
-        document.getElementById("data-pag-entrada").value = o.data_pagamento_entrada || "";
+        var elDataPagEnt = document.getElementById("data-pag-entrada");
+        if (elDataPagEnt) elDataPagEnt.value = o.data_pagamento_entrada || "";
         document.getElementById("data-pag-final").value = o.data_pagamento_final || "";
 
         var selStatus = document.getElementById("status-orcamento");
@@ -475,9 +491,10 @@
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
             entrega_suporte: orcamentoAtual && orcamentoAtual.entrega_suporte != null ? orcamentoAtual.entrega_suporte : null,
             entrega_suporte_obs: orcamentoAtual && orcamentoAtual.entrega_suporte_obs != null ? orcamentoAtual.entrega_suporte_obs : null,
+            data_pagamento_entrada_prevista: orcamentoAtual && orcamentoAtual.data_pagamento_entrada_prevista != null ? orcamentoAtual.data_pagamento_entrada_prevista : null,
             entrada: entrada,
             restante: restante,
-            data_pagamento_entrada: strInput("data-pag-entrada") || null,
+            data_pagamento_entrada: orcamentoAtual && orcamentoAtual.data_pagamento_entrada != null ? orcamentoAtual.data_pagamento_entrada : null,
             data_pagamento_final: strInput("data-pag-final") || null,
             contrato_numero_exibicao: strInput("contrato-numero-exibicao") || null,
             cliente_rg: strInput("contrato-cliente-rg") || null,

@@ -62,6 +62,15 @@ function entregaSuporteEhCortesia(valor) {
     return /cortesia/i.test(String(valor || ""));
 }
 
+function formatarDataBrPedido(s) {
+    if (!s) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        var p = String(s).split("-");
+        return p[2] + "/" + p[1] + "/" + p[0];
+    }
+    return String(s);
+}
+
 function montarMensagemOrcamento(orcId) {
     var nome = campoTrimOrcamento("nome");
     var telefone = campoTrimOrcamento("telefone");
@@ -77,6 +86,7 @@ function montarMensagemOrcamento(orcId) {
     var pagamento = campoTrimOrcamento("pagamento");
     var observacao = campoTrimOrcamento("observacao");
     var entregaSuporte = valorEntregaSuporteOrcamento();
+    var dataPagEntrada = campoTrimOrcamento("data-pagamento-entrada");
 
     var valorOriginal = calcularTotal();
     var minPadrao = 50;
@@ -106,7 +116,9 @@ function montarMensagemOrcamento(orcId) {
     msg += "\nFORMA DE ENTREGA E SUPORTE\n";
     msg += (entregaSuporte || "-") + "\n";
     if (entregaSuporteEhCortesia(entregaSuporte)) msg += "Obs.: " + OBS_SUPORTES_CORTESIA + "\n";
-    msg += "\nPagamento (ref.): " + (pagamento || "-") + "\n";
+    msg += "\nDADOS DO PAGAMENTO\n";
+    msg += "Data prevista p/ pagamento da entrada: " + (dataPagEntrada ? formatarDataBrPedido(dataPagEntrada) : "-") + "\n";
+    msg += "Pagamento (ref.): " + (pagamento || "-") + "\n";
     msg += "Observações: " + (observacao || "-") + "\n\n";
     msg += "CLIENTE\n";
     msg += "Nome: " + (nome || "-") + "\n";
@@ -176,6 +188,7 @@ function gerarOrcamento() {
     var pagamento = campoTrimOrcamento("pagamento");
     var observacao = campoTrimOrcamento("observacao");
     var entregaSuporte = valorEntregaSuporteOrcamento();
+    var dataPagEntrada = campoTrimOrcamento("data-pagamento-entrada");
 
     var entregaTexto = tipo === "Entrega" ? "Entrega — " + (endereco || "") : (tipo || "");
 
@@ -198,6 +211,7 @@ function gerarOrcamento() {
         entrega: entregaTexto,
         entrega_suporte: entregaSuporte || null,
         entrega_suporte_obs: entregaSuporteEhCortesia(entregaSuporte) ? OBS_SUPORTES_CORTESIA : null,
+        data_pagamento_entrada_prevista: dataPagEntrada || null,
         observacoes: observacao || "",
         itens: itens,
         valor_original: valorOriginal,
