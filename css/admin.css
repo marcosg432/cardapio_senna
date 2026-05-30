@@ -350,6 +350,15 @@
     max-width: 520px;
 }
 
+.admin-campo-ajuda {
+    max-width: 520px;
+    margin: 0 0 0.5rem 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: #6d5345;
+    opacity: 0.85;
+}
+
 .admin-contrato-anexo {
     margin: 1.25rem 0 1.5rem;
     padding: 1rem 1.15rem;

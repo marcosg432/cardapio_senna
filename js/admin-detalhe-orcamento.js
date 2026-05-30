@@ -323,6 +323,8 @@
         document.getElementById("degustacao-data").value = o.degustacao_data || "";
         document.getElementById("degustacao-hora").value = o.degustacao_hora || "";
         document.getElementById("degustacao-obs").value = o.degustacao_obs || "";
+        var elObsInternas = document.getElementById("observacoes-internas");
+        if (elObsInternas) elObsInternas.value = o.observacoes_internas || "";
 
         var fp = formaPagamentoOrc(o);
         var selFp = document.getElementById("forma-pagamento-adm");
@@ -487,6 +489,7 @@
             degustacao_data: strInput("degustacao-data") || null,
             degustacao_hora: strInput("degustacao-hora") || null,
             degustacao_obs: strInput("degustacao-obs") || null,
+            observacoes_internas: strInput("observacoes-internas") || null,
             forma_pagamento: strInput("forma-pagamento-adm") || null,
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
             entrega_suporte: orcamentoAtual && orcamentoAtual.entrega_suporte != null ? orcamentoAtual.entrega_suporte : null,
@@ -545,7 +548,8 @@
             evento_cerimonialista_tel: strInput("contrato-cerimonialista-tel") || null,
             evento_fotografo: strInput("contrato-fotografo") || null,
             evento_fotografo_tel: strInput("contrato-fotografo-tel") || null,
-            pagamento_valor_quitado_em: strInput("contrato-quitado-em") || null
+            pagamento_valor_quitado_em: strInput("contrato-quitado-em") || null,
+            observacoes_internas: strInput("observacoes-internas") || null
             },
             patchCamposClienteEventoPdfDom()
         );

@@ -237,6 +237,37 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
     doc.rect(margem, yResumoTopo, maxW, y - yResumoTopo + 3);
     y += 5;
 
+    var obsInternas = orcCampo(orcamento, ["observacoes_internas"], "");
+    if (obsInternas && obsInternas !== "—") {
+        garantirEspaco(20);
+        var yObsTopo = y;
+        doc.setFillColor(240, 232, 222);
+        doc.rect(margem, y, maxW, 7, "F");
+        doc.setFontSize(9.5);
+        doc.setFont(undefined, "bold");
+        doc.setTextColor(45, 38, 32);
+        doc.text("OBSERVAÇÕES DA CONTRATADA", margem + 2, y + 5);
+        doc.setFont(undefined, "normal");
+        y += 9;
+        doc.setFontSize(8.6);
+        doc.setTextColor(30, 25, 22);
+        var paragrafosObs = String(obsInternas).split(/\r?\n/);
+        paragrafosObs.forEach(function (par) {
+            var texto = par === "" ? " " : par;
+            var linhasObs = doc.splitTextToSize(texto, maxW - 4);
+            linhasObs.forEach(function (ln) {
+                garantirEspaco(8);
+                doc.text(ln, margem + 2, y);
+                y += 4.6;
+            });
+        });
+        y += 1;
+        doc.setDrawColor(95, 78, 68);
+        doc.setLineWidth(0.35);
+        doc.rect(margem, yObsTopo, maxW, y - yObsTopo + 1);
+        y += 5;
+    }
+
     return y;
 }
 
