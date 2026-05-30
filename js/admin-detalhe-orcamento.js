@@ -107,6 +107,19 @@
         return String(v).trim();
     }
 
+    /** Texto da observação interna: prioriza o textarea, depois o orçamento em memória. */
+    function observacoesInternasAtual() {
+        var el = document.getElementById("observacoes-internas");
+        if (el && typeof el.blur === "function") el.blur();
+        var t = strInput("observacoes-internas");
+        if (t) return t;
+        if (orcamentoAtual && orcamentoAtual.observacoes_internas != null) {
+            var s = String(orcamentoAtual.observacoes_internas).trim();
+            if (s) return s;
+        }
+        return null;
+    }
+
     function montarWhatsAppDetalhe(o) {
         var vo =
             typeof valorOriginalOrcamentoComItens === "function"
@@ -409,6 +422,22 @@
         return true;
     }
 
+    function salvarObservacaoInterna(valor, mensagemSucesso) {
+        var texto = valor != null ? String(valor).trim() : "";
+        var patch = { observacoes_internas: texto ? texto : null };
+        var atualizado = atualizarOrcamentoParcial(orcamentoAtual.id, patch);
+        if (!atualizado) {
+            alert("Não foi possível salvar a observação. Tente novamente.");
+            return false;
+        }
+        orcamentoAtual = atualizado;
+        orcamentoAtual.observacoes_internas = texto ? texto : null;
+        var el = document.getElementById("observacoes-internas");
+        if (el) el.value = texto;
+        if (mensagemSucesso) alert(mensagemSucesso);
+        return true;
+    }
+
     function preencherFormExtraDeItem(it) {
         var nomeEl = document.getElementById("extra-doce-nome");
         var qtdEl = document.getElementById("extra-doce-qtd");
@@ -489,7 +518,7 @@
             degustacao_data: strInput("degustacao-data") || null,
             degustacao_hora: strInput("degustacao-hora") || null,
             degustacao_obs: strInput("degustacao-obs") || null,
-            observacoes_internas: strInput("observacoes-internas") || null,
+            observacoes_internas: observacoesInternasAtual(),
             forma_pagamento: strInput("forma-pagamento-adm") || null,
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
             entrega_suporte: orcamentoAtual && orcamentoAtual.entrega_suporte != null ? orcamentoAtual.entrega_suporte : null,
@@ -549,7 +578,7 @@
             evento_fotografo: strInput("contrato-fotografo") || null,
             evento_fotografo_tel: strInput("contrato-fotografo-tel") || null,
             pagamento_valor_quitado_em: strInput("contrato-quitado-em") || null,
-            observacoes_internas: strInput("observacoes-internas") || null
+            observacoes_internas: observacoesInternasAtual()
             },
             patchCamposClienteEventoPdfDom()
         );
@@ -619,6 +648,35 @@
             }
         });
 
+        var btnAtualizarObs = document.getElementById("btn-atualizar-obs-internas");
+        if (btnAtualizarObs) {
+            btnAtualizarObs.addEventListener("click", function () {
+                var texto = strInput("observacoes-internas");
+                if (!texto) {
+                    alert("Digite a observação antes de atualizar, ou use \"Remover observação\" para limpar.");
+                    return;
+                }
+                salvarObservacaoInterna(texto, "Observação atualizada. Ao gerar o contrato, ela aparecerá na seção \"Observações da contratada\".");
+            });
+        }
+
+        var btnRemoverObs = document.getElementById("btn-remover-obs-internas");
+        if (btnRemoverObs) {
+            btnRemoverObs.addEventListener("click", function () {
+                var atual = strInput("observacoes-internas") || String(orcamentoAtual.observacoes_internas || "").trim();
+                if (!atual) {
+                    alert("Não há observação para remover.");
+                    return;
+                }
+                if (!confirm("Remover a observação interna deste orçamento? Ela não aparecerá mais no contrato.")) {
+                    return;
+                }
+                var el = document.getElementById("observacoes-internas");
+                if (el) el.value = "";
+                salvarObservacaoInterna(null, "Observação removida. Ao gerar o contrato, a seção não aparecerá.");
+            });
+        }
+
         document.getElementById("btn-whatsapp-orc").addEventListener("click", function () {
             var fresh = getOrcamentoPorId(orcamentoAtual.id);
             if (!fresh) return;
@@ -664,6 +722,7 @@
             var stContrato = CONFIG.STATUS_ORCAMENTO && CONFIG.STATUS_ORCAMENTO.CONTRATO_GERADO;
 
             var extra = patchComumExtra();
+            extra.observacoes_internas = observacoesInternasAtual();
             extra.itens = itensContrato;
             extra.valor_original = voSnap;
             extra.total = voSnap;
@@ -703,6 +762,7 @@
             /* Tudo que está nos campos #contrato-* / #contrato-pdf-* do anexo sobrepõe o objeto do servidor antes do PDF */
             var anexoDoForm = patchCamposAnexoPdf();
             dadosPdf = Object.assign({}, dadosPdf, anexoDoForm);
+            dadosPdf.observacoes_internas = observacoesInternasAtual() || dadosPdf.observacoes_internas || null;
             /* Se não bater com o servidor, o PDF mesmo assim sai certo pelo merge local */
 
             gerarContratoPDF(dadosPdf);
