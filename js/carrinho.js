@@ -275,8 +275,13 @@ function atualizarBadge() {
  * Abre o sidebar do carrinho
  */
 function abrirCarrinho() {
-    document.querySelector('.carrinho-overlay')?.classList.add('ativo');
-    document.querySelector('.carrinho-sidebar')?.classList.add('ativo');
+    document.querySelectorAll('.carrinho-overlay').forEach(function (el) {
+        el.classList.add('ativo');
+        el.setAttribute('aria-hidden', 'false');
+    });
+    document.querySelectorAll('.carrinho-sidebar').forEach(function (el) {
+        el.classList.add('ativo');
+    });
     document.body.style.overflow = 'hidden';
 }
 
@@ -284,9 +289,38 @@ function abrirCarrinho() {
  * Fecha o sidebar do carrinho
  */
 function fecharCarrinho() {
-    document.querySelector('.carrinho-overlay')?.classList.remove('ativo');
-    document.querySelector('.carrinho-sidebar')?.classList.remove('ativo');
+    document.querySelectorAll('.carrinho-overlay').forEach(function (el) {
+        el.classList.remove('ativo');
+        el.setAttribute('aria-hidden', 'true');
+    });
+    document.querySelectorAll('.carrinho-sidebar').forEach(function (el) {
+        el.classList.remove('ativo');
+    });
     document.body.style.overflow = '';
+}
+
+/**
+ * Evita que a seleção de suporte/entrega feche o carrinho ou dispare clique no overlay (mobile).
+ */
+function initEntregaSuporteCarrinho() {
+    var grupo = document.getElementById('entrega-suporte');
+    if (!grupo) return;
+
+    grupo.addEventListener('click', function (e) {
+        e.stopPropagation();
+    });
+
+    grupo.querySelectorAll('input[name="entrega-suporte"]').forEach(function (radio) {
+        radio.addEventListener('change', function (e) {
+            e.stopPropagation();
+            abrirCarrinho();
+            var opcao = radio.closest('.entrega-suporte-opcao');
+            if (opcao && typeof opcao.scrollIntoView === 'function') {
+                opcao.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+            if (typeof radio.blur === 'function') radio.blur();
+        });
+    });
 }
 
 /**
@@ -313,7 +347,14 @@ function initCarrinho() {
 
     document.querySelector('.carrinho-toggle')?.addEventListener('click', abrirCarrinho);
     document.querySelector('.carrinho-close')?.addEventListener('click', fecharCarrinho);
-    document.querySelector('.carrinho-overlay')?.addEventListener('click', fecharCarrinho);
+    document.querySelectorAll('.carrinho-overlay').forEach(function (overlay) {
+        overlay.addEventListener('click', function (e) {
+            if (e.target !== overlay) return;
+            fecharCarrinho();
+        });
+    });
+
+    initEntregaSuporteCarrinho();
 
     document.querySelectorAll('.btn-adicionar-carrinho').forEach(btn => {
         btn.addEventListener('click', function () {

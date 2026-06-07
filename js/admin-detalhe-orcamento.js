@@ -252,17 +252,13 @@
 
         if (extraItemEdicaoIndex != null) {
             var itEdit = (o.itens || [])[extraItemEdicaoIndex];
-            if (!itEdit || itEdit.extra_pedido_admin !== true) extraItemEdicaoIndex = null;
+            if (!itEdit) extraItemEdicaoIndex = null;
         }
 
         var ajudaItens = document.getElementById("itens-editar-ajuda");
         if (ajudaItens) {
-            var algumExtra = (o.itens || []).some(function (it) {
-                return it && it.extra_pedido_admin === true;
-            });
-            ajudaItens.textContent = algumExtra
-                ? "Onde está o Editar: à direita do texto, nas linhas que terminam em (complemento manual). Os itens vindos só do cardápio pelo cliente não têm esses botões."
-                : "Onde está o Editar: ele só aparece depois que um complemento manual for salvo — use a caixa “Incluir doce complementar” abaixo, clique em Adicionar à lista, e aparecerá uma nova linha com (complemento manual) e os botões Editar e Remover à direita.";
+            ajudaItens.textContent =
+                "Use Editar ou Remover à direita de cada linha. Itens do cardápio respeitam o pedido mínimo do site; complementos manuais aparecem com (complemento manual).";
         }
 
         var ul = document.getElementById("lista-itens");
@@ -279,25 +275,23 @@
             spanTxt.className = "admin-lista-item-texto";
             spanTxt.textContent = linha;
             li.appendChild(spanTxt);
-            if (it.extra_pedido_admin === true) {
-                var acoes = document.createElement("span");
-                acoes.className = "admin-lista-item-acoes";
-                var btnEd = document.createElement("button");
-                btnEd.type = "button";
-                btnEd.className = "admin-btn-item-acao";
-                btnEd.textContent = "Editar";
-                btnEd.setAttribute("data-acao-extra", "editar");
-                btnEd.setAttribute("data-item-index", String(idx));
-                var btnRm = document.createElement("button");
-                btnRm.type = "button";
-                btnRm.className = "admin-btn-item-acao admin-btn-item-acao--perigo";
-                btnRm.textContent = "Remover";
-                btnRm.setAttribute("data-acao-extra", "remover");
-                btnRm.setAttribute("data-item-index", String(idx));
-                acoes.appendChild(btnEd);
-                acoes.appendChild(btnRm);
-                li.appendChild(acoes);
-            }
+            var acoes = document.createElement("span");
+            acoes.className = "admin-lista-item-acoes";
+            var btnEd = document.createElement("button");
+            btnEd.type = "button";
+            btnEd.className = "admin-btn-item-acao";
+            btnEd.textContent = "Editar";
+            btnEd.setAttribute("data-acao-extra", "editar");
+            btnEd.setAttribute("data-item-index", String(idx));
+            var btnRm = document.createElement("button");
+            btnRm.type = "button";
+            btnRm.className = "admin-btn-item-acao admin-btn-item-acao--perigo";
+            btnRm.textContent = "Remover";
+            btnRm.setAttribute("data-acao-extra", "remover");
+            btnRm.setAttribute("data-item-index", String(idx));
+            acoes.appendChild(btnEd);
+            acoes.appendChild(btnRm);
+            li.appendChild(acoes);
             ul.appendChild(li);
         });
 
@@ -362,17 +356,88 @@
     }
 
     var orcamentoAtual = null;
-    /** Índice em `orcamentoAtual.itens` ao editar um complemento manual; null = modo inclusão. */
+    /** Índice em `orcamentoAtual.itens` ao editar uma linha; null = modo inclusão de complemento. */
     var extraItemEdicaoIndex = null;
+
+    function pedidoMinimoPadraoAdmin() {
+        if (typeof CONFIG !== "undefined" && CONFIG.pedidoMinimoUnidades != null) {
+            var n = parseInt(String(CONFIG.pedidoMinimoUnidades), 10);
+            if (Number.isFinite(n) && n >= 1) return n;
+        }
+        return 50;
+    }
+
+    function qtdMinItemOrcamento(it) {
+        if (!it) return pedidoMinimoPadraoAdmin();
+        if (it.extra_pedido_admin === true) return 1;
+        var padrao = pedidoMinimoPadraoAdmin();
+        var raw = it.qtd_min != null ? it.qtd_min : it.qtdMin != null ? it.qtdMin : padrao;
+        var m = parseInt(String(raw), 10);
+        if (!Number.isFinite(m) || m < 1) return padrao;
+        return Math.max(padrao, m);
+    }
+
+    function montarItemOrcamentoEditado(itemAnterior, nome, q, precoUnit) {
+        var subtotalItem = Math.round(q * precoUnit * 100) / 100;
+        if (itemAnterior && itemAnterior.extra_pedido_admin === true) {
+            return {
+                nome: nome,
+                quantidade: q,
+                preco: precoUnit,
+                preco_unitario: precoUnit,
+                subtotal: subtotalItem,
+                qtd_min: 1,
+                extra_pedido_admin: true
+            };
+        }
+        var qm = itemAnterior
+            ? itemAnterior.qtd_min != null
+                ? itemAnterior.qtd_min
+                : itemAnterior.qtdMin != null
+                  ? itemAnterior.qtdMin
+                  : qtdMinItemOrcamento(itemAnterior)
+            : pedidoMinimoPadraoAdmin();
+        return {
+            nome: nome,
+            quantidade: q,
+            preco: precoUnit,
+            preco_unitario: precoUnit,
+            subtotal: subtotalItem,
+            qtd_min: qm
+        };
+    }
 
     function atualizarUiModoExtra() {
         var edicao = extraItemEdicaoIndex != null;
         var tit = document.getElementById("extra-doce-titulo");
         var btnOk = document.getElementById("btn-extra-adicionar-item");
         var btnCanc = document.getElementById("btn-extra-cancelar-edicao");
+        var hintMin = document.getElementById("extra-doce-hint-min");
+        var desc = document.getElementById("extra-doce-descricao");
         if (!tit || !btnOk || !btnCanc) return;
-        tit.textContent = edicao ? "Editar doce complementar" : "Incluir doce complementar";
-        btnOk.textContent = edicao ? "Salvar alterações" : "Adicionar à lista";
+        if (edicao && orcamentoAtual) {
+            var itEd = (orcamentoAtual.itens || [])[extraItemEdicaoIndex];
+            if (itEd && itEd.extra_pedido_admin === true) {
+                tit.textContent = "Editar doce complementar";
+                if (hintMin) hintMin.hidden = true;
+            } else {
+                tit.textContent = "Editar item do cardápio";
+                if (hintMin) {
+                    var minQ = qtdMinItemOrcamento(itEd);
+                    hintMin.textContent = "Pedido mínimo deste item: " + minQ + " unidade(s).";
+                    hintMin.hidden = false;
+                }
+            }
+            if (desc) desc.hidden = true;
+        } else {
+            tit.textContent = "Incluir doce complementar";
+            if (hintMin) {
+                hintMin.hidden = true;
+                hintMin.textContent = "";
+            }
+            if (desc) desc.hidden = false;
+        }
+        btnOk.textContent = edicao ? "Salvar alterações do item" : "Adicionar à lista";
         btnCanc.hidden = !edicao;
     }
 
@@ -813,7 +878,7 @@
             if (!Number.isFinite(idx)) return;
             var itensArr = orcamentoAtual.itens || [];
             var itemRef = itensArr[idx];
-            if (!itemRef || itemRef.extra_pedido_admin !== true) return;
+            if (!itemRef) return;
 
             if (acao === "editar") {
                 extraItemEdicaoIndex = idx;
@@ -824,7 +889,11 @@
                 return;
             }
             if (acao === "remover") {
-                if (!confirm("Remover este complemento manual deste orçamento?")) return;
+                var msgRem =
+                    itemRef.extra_pedido_admin === true
+                        ? "Remover este complemento manual deste orçamento?"
+                        : "Remover este item do cardápio deste orçamento?";
+                if (!confirm(msgRem)) return;
                 if (!validarCamposTipoDesconto()) return;
                 var listaNova = itensArr.slice();
                 listaNova.splice(idx, 1);
@@ -859,27 +928,34 @@
             }
             if (!validarCamposTipoDesconto()) return;
 
-            var subtotalItem = Math.round(q * precoUnit * 100) / 100;
-            var novoItem = {
-                nome: nome,
-                quantidade: q,
-                preco: precoUnit,
-                preco_unitario: precoUnit,
-                subtotal: subtotalItem,
-                qtd_min: 1,
-                extra_pedido_admin: true
-            };
             var lista = (orcamentoAtual.itens || []).slice();
             var edicao = extraItemEdicaoIndex;
             if (edicao != null) {
-                if (!lista[edicao] || lista[edicao].extra_pedido_admin !== true) {
-                    alert("O complemento em edição não está mais disponível.");
+                var itemAnterior = lista[edicao];
+                if (!itemAnterior) {
+                    alert("O item em edição não está mais disponível.");
                     sairModoEdicaoExtra();
                     return;
                 }
-                lista[edicao] = novoItem;
+                if (itemAnterior.extra_pedido_admin !== true) {
+                    var minCard = qtdMinItemOrcamento(itemAnterior);
+                    if (q < minCard) {
+                        alert("Quantidade mínima para este item: " + minCard + " unidade(s).");
+                        return;
+                    }
+                }
+                lista[edicao] = montarItemOrcamentoEditado(itemAnterior, nome, q, precoUnit);
             } else {
-                lista.push(novoItem);
+                var subtotalNovo = Math.round(q * precoUnit * 100) / 100;
+                lista.push({
+                    nome: nome,
+                    quantidade: q,
+                    preco: precoUnit,
+                    preco_unitario: precoUnit,
+                    subtotal: subtotalNovo,
+                    qtd_min: 1,
+                    extra_pedido_admin: true
+                });
             }
             if (!persistirItensOrcamento(lista)) return;
             sairModoEdicaoExtra();

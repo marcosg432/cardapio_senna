@@ -153,7 +153,7 @@
                 <ul id="lista-itens" class="admin-lista-itens"></ul>
                 <div class="admin-extra-itens" id="admin-extra-itens-wrap">
                     <h3 class="admin-secao-titulo" id="extra-doce-titulo">Incluir doce complementar</h3>
-                    <p class="admin-hint-text">Para quando o cliente decidir acrescentar outro item depois do orçamento inicial. Os valores somam ao total abaixo, entram no PDF e no texto do WhatsApp.</p>
+                    <p class="admin-hint-text" id="extra-doce-descricao">Edite qualquer linha com os botões à direita, ou inclua um complemento manual abaixo. Tudo entra no total, no PDF e no WhatsApp.</p>
                     <div class="admin-grid-2">
                         <div>
                             <label for="extra-doce-nome">Nome do doce</label>
@@ -164,6 +164,7 @@
                             <input type="number" id="extra-doce-qtd" min="1" step="1" value="1" inputmode="numeric">
                         </div>
                     </div>
+                    <p id="extra-doce-hint-min" class="admin-hint-text admin-hint-text--small" hidden></p>
                     <label for="extra-doce-preco">Preço unitário (R$)</label>
                     <input type="text" id="extra-doce-preco" placeholder="Ex.: 2,50" inputmode="decimal" autocomplete="off">
                     <p class="admin-hint-text admin-hint-text--small">Não vale a regra de mínimo de 50 unidades do site; é um acréscimo manual apenas neste orçamento.</p>
@@ -176,7 +177,7 @@
                 <p id="valor-original-divergencia" class="admin-aviso-divergencia" hidden></p>
 
                 <h2>Desconto e valor final</h2>
-                <p style="font-size:0.9rem;opacity:0.9">O subtotal dos produtos está logo acima. Aqui a ordem é: <strong>taxa de entrega</strong> (passo a passo vê o total com entrega) → <strong>descontos</strong> (cerimonialista, desconto geral e degustação) → <strong>valor fechado</strong>. Os preços unitários dos itens não são alterados.</p>
+                <p style="font-size:0.9rem;opacity:0.9">O subtotal dos produtos está logo acima (atualize os itens na seção «Itens» se precisar). A ordem é: <strong>taxa de entrega</strong> → <strong>descontos</strong> (cerimonialista, desconto geral e degustação) → <strong>valor fechado</strong>.</p>
 
                 <label for="taxa-entrega">Taxa de entrega (R$)</label>
                 <input type="text" id="taxa-entrega" placeholder="0,00" inputmode="decimal" autocomplete="off">
