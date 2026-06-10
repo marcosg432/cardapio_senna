@@ -345,8 +345,11 @@
 
         document.getElementById("entrada").value =
             o.entrada != null && o.entrada !== "" ? String(o.entrada).replace(".", ",") : "";
-        var elDataPagEnt = document.getElementById("data-pag-entrada");
-        if (elDataPagEnt) elDataPagEnt.value = o.data_pagamento_entrada || "";
+        var elDataPagPrevInput = document.getElementById("data-pag-entrada-prevista");
+        if (elDataPagPrevInput) {
+            var dppInput = String(o.data_pagamento_entrada_prevista || "").trim();
+            elDataPagPrevInput.value = /^\d{4}-\d{2}-\d{2}$/.test(dppInput) ? dppInput : "";
+        }
         document.getElementById("data-pag-final").value = o.data_pagamento_final || "";
 
         var selStatus = document.getElementById("status-orcamento");
@@ -588,7 +591,7 @@
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
             entrega_suporte: orcamentoAtual && orcamentoAtual.entrega_suporte != null ? orcamentoAtual.entrega_suporte : null,
             entrega_suporte_obs: orcamentoAtual && orcamentoAtual.entrega_suporte_obs != null ? orcamentoAtual.entrega_suporte_obs : null,
-            data_pagamento_entrada_prevista: orcamentoAtual && orcamentoAtual.data_pagamento_entrada_prevista != null ? orcamentoAtual.data_pagamento_entrada_prevista : null,
+            data_pagamento_entrada_prevista: strInput("data-pag-entrada-prevista") || null,
             entrada: entrada,
             restante: restante,
             data_pagamento_entrada: orcamentoAtual && orcamentoAtual.data_pagamento_entrada != null ? orcamentoAtual.data_pagamento_entrada : null,
