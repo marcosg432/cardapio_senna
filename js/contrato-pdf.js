@@ -271,6 +271,99 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
     return y;
 }
 
+function resolverUrlAssetSite(rel) {
+    if (!rel) return "";
+    if (/^https?:\/\//i.test(rel) || rel.indexOf("data:") === 0) return rel;
+    return rel.charAt(0) === "/" ? rel : "/" + rel;
+}
+
+/**
+ * Carrega imagem do site para uso no jsPDF (data URL + dimensões).
+ * @returns {Promise<{dataUrl:string,width:number,height:number}|null>}
+ */
+function carregarImagemParaPdf(url) {
+    return new Promise(function (resolve) {
+        if (!url) {
+            resolve(null);
+            return;
+        }
+        var img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = function () {
+            try {
+                var canvas = document.createElement("canvas");
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                canvas.getContext("2d").drawImage(img, 0, 0);
+                resolve({
+                    dataUrl: canvas.toDataURL("image/png"),
+                    width: img.naturalWidth,
+                    height: img.naturalHeight
+                });
+            } catch (e) {
+                console.warn("Não foi possível converter imagem para PDF:", e);
+                resolve(null);
+            }
+        };
+        img.onerror = function () {
+            console.warn("Imagem não encontrada para PDF:", url);
+            resolve(null);
+        };
+        img.src = url;
+    });
+}
+
+/**
+ * Bloco de assinaturas no final do contrato (contratante em branco + imagem da contratada).
+ */
+function desenharAssinaturasContratoPdf(ctx) {
+    var doc = ctx.doc;
+    var y = ctx.y;
+    var margem = ctx.margem;
+    var maxW = ctx.maxW;
+    var nomeContratada = ctx.nomeContratada;
+    var empresa = ctx.empresa;
+    var assinatura = ctx.assinatura;
+
+    function linha(texto, dy) {
+        dy = dy || 5.2;
+        doc.setFontSize(9);
+        var lines = doc.splitTextToSize(String(texto || ""), maxW);
+        doc.text(lines, margem, y);
+        y += lines.length * dy;
+        if (y > 278) {
+            doc.addPage();
+            y = 16;
+        }
+    }
+
+    linha("______________________________________________");
+    linha("Assinatura do(a) CONTRATANTE");
+    y += 2;
+
+    if (assinatura && assinatura.dataUrl) {
+        var largMax = 72;
+        var altMax = 18;
+        var ratio = assinatura.width / assinatura.height;
+        var largAss = largMax;
+        var altAss = largAss / ratio;
+        if (altAss > altMax) {
+            altAss = altMax;
+            largAss = altAss * ratio;
+        }
+        if (y + altAss + 6 > 278) {
+            doc.addPage();
+            y = 16;
+        }
+        doc.addImage(assinatura.dataUrl, "PNG", margem, y, largAss, altAss);
+        y += altAss + 3;
+    } else {
+        linha("______________________________________________");
+    }
+    linha("Assinatura da CONTRATADA — " + nomeContratada + " / " + empresa);
+    return y;
+}
+
 function gerarContratoPDF(orcamento) {
     if (typeof window.jspdf === "undefined") {
         alert("Biblioteca de PDF não carregada.");
@@ -409,14 +502,23 @@ function gerarContratoPDF(orcamento) {
         formatarMoedaPdf: formatarMoedaPdf
     });
 
-    doc.setFontSize(9);
-    linha("______________________________________________");
-    linha("Assinatura do(a) CONTRATANTE");
-    y += 2;
-    linha("______________________________________________");
-    linha("Assinatura da CONTRATADA — " + nomeContratada + " / " + empresa);
+    var assinaturaPath =
+        cfg.contratoAssinaturaRelPath != null && String(cfg.contratoAssinaturaRelPath).trim() !== ""
+            ? String(cfg.contratoAssinaturaRelPath).trim()
+            : "assets/assinatura-contratada.png";
 
-    doc.save("contrato-" + (orcamento.id || "documento") + ".pdf");
+    carregarImagemParaPdf(resolverUrlAssetSite(assinaturaPath)).then(function (assinatura) {
+        desenharAssinaturasContratoPdf({
+            doc: doc,
+            y: y,
+            margem: margem,
+            maxW: maxW,
+            nomeContratada: nomeContratada,
+            empresa: empresa,
+            assinatura: assinatura
+        });
+        doc.save("contrato-" + (orcamento.id || "documento") + ".pdf");
+    });
 }
 
 /**

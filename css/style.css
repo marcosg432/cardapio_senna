@@ -3220,7 +3220,7 @@ body.pagina-linha-afetiva .doces-grid .produto-card.produto-card--foto-alta-brul
 
 /* Só o card «Pérola Negra»: enquadramento da foto (sem alterar altura da faixa) */
 .doces-grid .produto-card .produto-img.produto-img--enquadre-perola-negra {
-    background-position: center 60%;
+    background-position: center center;
 }
 
 /* Só o card «Mini Trufa» (não o Coração): mesma lógica de recorte do banner Linha Clássica na home — só posição, sem zoom */

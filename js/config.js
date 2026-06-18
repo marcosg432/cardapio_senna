@@ -57,7 +57,12 @@ const CONFIG = {
      * Logo para PDF (opcional): caminho a partir da raiz do site, ex: "assets/logo.png"
      * Deixe vazio para não carregar imagem (usa só o nome da empresa).
      */
-    logoOrcamentoRelPath: ""
+    logoOrcamentoRelPath: "",
+    /**
+     * Assinatura da CONTRATADA no contrato PDF (caminho a partir da raiz do site).
+     * Deixe vazio para usar só a linha em branco.
+     */
+    contratoAssinaturaRelPath: "assets/assinatura-contratada.png"
 };
 
 /**
