@@ -179,9 +179,11 @@
                 <h2>Desconto e valor final</h2>
                 <p style="font-size:0.9rem;opacity:0.9">O subtotal dos produtos está logo acima (atualize os itens na seção «Itens» se precisar). A ordem é: <strong>taxa de entrega</strong> → <strong>descontos</strong> (cerimonialista, desconto geral e degustação) → <strong>valor fechado</strong>.</p>
 
-                <label for="taxa-entrega">Taxa de entrega (R$)</label>
+                <label for="taxa-entrega">Taxa de entrega / suporte (R$)</label>
                 <input type="text" id="taxa-entrega" placeholder="0,00" inputmode="decimal" autocomplete="off">
-                <p><strong>Taxa de entrega:</strong> <span id="preview-taxa-entrega"></span></p>
+                <p class="admin-campo-ajuda">No site o cliente vê valores <strong>a partir de</strong> (retirada grátis · entrega R$&nbsp;50 · montagem com suporte da decoração R$&nbsp;150 · montagem com suporte cortesia R$&nbsp;200). Edite aqui o valor fechado deste orçamento — o total final usa o que estiver neste campo.</p>
+                <p id="taxa-entrega-referencia" class="admin-hint-text admin-hint-text--small" hidden></p>
+                <p><strong>Taxa de entrega / suporte:</strong> <span id="preview-taxa-entrega"></span></p>
                 <p><strong>Total com entrega (subtotal + taxa — antes dos descontos):</strong> <span id="preview-total-com-entrega"></span></p>
 
                 <p style="font-size:0.9rem;opacity:0.88;margin-top:1rem"><strong>Descontos</strong> <span style="font-weight:normal;opacity:0.85">(abaixo, na ordem: cerimonialista → geral → degustação)</span></p>

@@ -20,6 +20,34 @@
         return Math.round(n * 100) / 100;
     }
 
+    /**
+     * Sugestão "a partir de" conforme a opção escolhida no site (só referência no admin).
+     * @param {string} entregaSuporte
+     * @returns {{min: number, rotulo: string}|null}
+     */
+    function referenciaTaxaPorEntregaSuporte(entregaSuporte) {
+        var v = String(entregaSuporte || "").toLowerCase();
+        if (!v) return null;
+        if (/retirada/.test(v)) return { min: 0, rotulo: "Sem custo adicional (retirada)" };
+        if (/sem montagem/.test(v)) return { min: 50, rotulo: "A partir de R$ 50,00 (entrega sem montagem)" };
+        if (/decora/.test(v)) return { min: 150, rotulo: "A partir de R$ 150,00 (montagem — suporte da decoração)" };
+        if (/cortesia/.test(v)) return { min: 200, rotulo: "A partir de R$ 200,00 (montagem — suporte cortesia)" };
+        return null;
+    }
+
+    function atualizarReferenciaTaxaEntrega(entregaSuporte) {
+        var el = document.getElementById("taxa-entrega-referencia");
+        if (!el) return;
+        var ref = referenciaTaxaPorEntregaSuporte(entregaSuporte);
+        if (!ref) {
+            el.textContent = "";
+            el.hidden = true;
+            return;
+        }
+        el.textContent = "Referência do site para esta escolha: " + ref.rotulo + ". Ajuste o campo acima para o valor acordado.";
+        el.hidden = false;
+    }
+
     function getQueryId() {
         var params = new URLSearchParams(window.location.search);
         return params.get("id");
@@ -211,6 +239,7 @@
                 elEntSupObs.hidden = true;
             }
         }
+        atualizarReferenciaTaxaEntrega(entregaSuporteV);
         var elDataPagPrev = document.getElementById("view-data-pag-entrada-prevista");
         if (elDataPagPrev) {
             var dpp = String(o.data_pagamento_entrada_prevista || "").trim();
