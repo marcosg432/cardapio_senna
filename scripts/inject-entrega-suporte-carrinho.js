@@ -9,30 +9,42 @@ const BLOCO =
     "                <p class=\"carrinho-form-section-title\">Forma de entrega e suporte *</p>\n" +
     "                <div class=\"entrega-suporte\" id=\"entrega-suporte\" role=\"radiogroup\" aria-label=\"Forma de entrega e suporte\">\n" +
     "                    <label class=\"entrega-suporte-opcao\">\n" +
-    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Apenas retirada dos doces sem entrega\">\n" +
+    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Apenas retirada dos doces sem entrega\" data-taxa=\"0\">\n" +
     "                        <span class=\"entrega-suporte-card\">\n" +
-    "                            <span class=\"entrega-suporte-titulo\">Apenas retirada dos doces</span>\n" +
+    "                            <span class=\"entrega-suporte-head\">\n" +
+    "                                <span class=\"entrega-suporte-titulo\">Apenas retirada dos doces</span>\n" +
+    "                                <span class=\"entrega-suporte-preco\">Sem custo adicional</span>\n" +
+    "                            </span>\n" +
     "                            <span class=\"entrega-suporte-desc\">Sem entrega — você retira os doces no local combinado.</span>\n" +
     "                        </span>\n" +
     "                    </label>\n" +
     "                    <label class=\"entrega-suporte-opcao\">\n" +
-    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Apenas entrega sem montagem\">\n" +
+    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Apenas entrega sem montagem\" data-taxa=\"50\">\n" +
     "                        <span class=\"entrega-suporte-card\">\n" +
-    "                            <span class=\"entrega-suporte-titulo\">Apenas entrega sem montagem</span>\n" +
+    "                            <span class=\"entrega-suporte-head\">\n" +
+    "                                <span class=\"entrega-suporte-titulo\">Apenas entrega sem montagem</span>\n" +
+    "                                <span class=\"entrega-suporte-preco\">A partir de R$ 50,00</span>\n" +
+    "                            </span>\n" +
     "                            <span class=\"entrega-suporte-desc\">Entregamos os doces no local, sem montagem da mesa.</span>\n" +
     "                        </span>\n" +
     "                    </label>\n" +
     "                    <label class=\"entrega-suporte-opcao\">\n" +
-    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Entrega dos doces com montagem - suportes da decoração\">\n" +
+    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Entrega dos doces com montagem - suportes da decoração\" data-taxa=\"150\">\n" +
     "                        <span class=\"entrega-suporte-card\">\n" +
-    "                            <span class=\"entrega-suporte-titulo\">Entrega com montagem — suportes da decoração</span>\n" +
+    "                            <span class=\"entrega-suporte-head\">\n" +
+    "                                <span class=\"entrega-suporte-titulo\">Entrega com montagem — suportes da decoração</span>\n" +
+    "                                <span class=\"entrega-suporte-preco\">A partir de R$ 150,00</span>\n" +
+    "                            </span>\n" +
     "                            <span class=\"entrega-suporte-desc\">Entregamos e montamos a mesa usando os suportes da sua decoração.</span>\n" +
     "                        </span>\n" +
     "                    </label>\n" +
     "                    <label class=\"entrega-suporte-opcao\">\n" +
-    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Entrega dos doces com montagem - suportes cortesia\">\n" +
+    "                        <input type=\"radio\" name=\"entrega-suporte\" value=\"Entrega dos doces com montagem - suportes cortesia\" data-taxa=\"200\">\n" +
     "                        <span class=\"entrega-suporte-card\">\n" +
-    "                            <span class=\"entrega-suporte-titulo\">Entrega com montagem — suportes cortesia</span>\n" +
+    "                            <span class=\"entrega-suporte-head\">\n" +
+    "                                <span class=\"entrega-suporte-titulo\">Entrega com montagem — suportes cortesia</span>\n" +
+    "                                <span class=\"entrega-suporte-preco\">A partir de R$ 200,00</span>\n" +
+    "                            </span>\n" +
     "                            <span class=\"entrega-suporte-desc\">Entregamos e montamos a mesa com nossos suportes cortesia.</span>\n" +
     "                            <span class=\"entrega-suporte-nota\">Os suportes devem ser devolvidos na semana seguinte à festa.</span>\n" +
     "                        </span>\n" +
@@ -68,7 +80,7 @@ for (const f of FILES) {
         process.exitCode = 1;
         continue;
     }
-    t = t.replace(OLD, NEW);
+    t = t.split(OLD).join(NEW);
     fs.writeFileSync(f, t, "utf8");
     ok++;
 }

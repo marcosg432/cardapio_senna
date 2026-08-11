@@ -457,12 +457,35 @@
     outline-offset: 2px;
 }
 
+.entrega-suporte-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+
 .entrega-suporte-titulo {
     display: block;
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--marrom);
     line-height: 1.3;
+}
+
+.entrega-suporte-preco {
+    flex-shrink: 0;
+    max-width: 42%;
+    text-align: right;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.25;
+    color: var(--accent-rose-bright);
+    opacity: 0.95;
+}
+
+.entrega-suporte-opcao input:checked + .entrega-suporte-card .entrega-suporte-preco {
+    opacity: 1;
 }
 
 .entrega-suporte-desc {
@@ -472,6 +495,29 @@
     opacity: 0.75;
     margin-top: 0.2rem;
     line-height: 1.4;
+}
+
+.carrinho-total-detalhe {
+    display: none;
+    margin-bottom: 0.55rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--marrom);
+    opacity: 0.78;
+}
+
+.carrinho-total-detalhe.is-visible {
+    display: block;
+}
+
+.carrinho-total-detalhe-linha {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.carrinho-total-detalhe-linha + .carrinho-total-detalhe-linha {
+    margin-top: 0.15rem;
 }
 
 .entrega-suporte-nota {

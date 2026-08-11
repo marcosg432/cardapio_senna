@@ -88,7 +88,11 @@ function montarMensagemOrcamento(orcId) {
     var entregaSuporte = valorEntregaSuporteOrcamento();
     var dataPagEntrada = campoTrimOrcamento("data-pagamento-entrada");
 
-    var valorOriginal = calcularTotal();
+    var valorOriginal = typeof calcularTotal === "function" ? calcularTotal() : 0;
+    var taxaEntrega = typeof taxaEntregaSuporteSelecionada === "function" ? taxaEntregaSuporteSelecionada() : 0;
+    var valorFinalEstimado = typeof calcularTotalComEntregaSuporte === "function"
+        ? calcularTotalComEntregaSuporte()
+        : Math.round((valorOriginal + taxaEntrega) * 100) / 100;
     var minPadrao = 50;
     if (typeof getPedidoMinimoPadrao === 'function') {
         minPadrao = getPedidoMinimoPadrao();
@@ -105,7 +109,13 @@ function montarMensagemOrcamento(orcId) {
         var subtotal = item.preco * item.quantidade;
         msg += item.quantidade + "x " + item.nome + " - R$ " + formatarPreco(subtotal) + "\n";
     });
-    msg += "\nTotal estimado: R$ " + formatarPreco(valorOriginal) + "\n\n";
+    msg += "\nSubtotal produtos: R$ " + formatarPreco(valorOriginal) + "\n";
+    if (taxaEntrega > 0) {
+        msg += "Entrega/suporte (a partir de): R$ " + formatarPreco(taxaEntrega) + "\n";
+    } else if (entregaSuporte) {
+        msg += "Entrega/suporte: Sem custo adicional\n";
+    }
+    msg += "Total estimado: R$ " + formatarPreco(valorFinalEstimado) + "\n\n";
     msg += "EVENTO\n";
     msg += "Data: " + (dataEvento || "-") + "\n";
     msg += "Tipo: " + (tipoEvento || "-") + "\n";
@@ -193,6 +203,12 @@ function gerarOrcamento() {
     var entregaTexto = tipo === "Entrega" ? "Entrega — " + (endereco || "") : (tipo || "");
 
     var valorOriginal = Math.round(calcularTotal() * 100) / 100;
+    var taxaEntrega = typeof taxaEntregaSuporteSelecionada === "function"
+        ? taxaEntregaSuporteSelecionada()
+        : 0;
+    var valorFinal = typeof calcularValorFinalOrcamento === "function"
+        ? calcularValorFinalOrcamento(valorOriginal, null, null, null, null, taxaEntrega)
+        : Math.round((valorOriginal + taxaEntrega) * 100) / 100;
     var id = Date.now();
     var itens = montarItensOrcamentoDoCarrinho();
 
@@ -220,8 +236,8 @@ function gerarOrcamento() {
         valor_desconto: 0,
         desconto_degustacao: null,
         desconto_cerimonialista: null,
-        taxa_entrega: null,
-        valor_final: valorOriginal,
+        taxa_entrega: taxaEntrega > 0 ? taxaEntrega : 0,
+        valor_final: valorFinal,
         degustacao_data: null,
         degustacao_hora: null,
         degustacao_obs: null,

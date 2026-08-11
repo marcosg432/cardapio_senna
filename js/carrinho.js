@@ -178,11 +178,86 @@ function alterarQuantidade(index, acao) {
 }
 
 /**
+ * Taxa da opção de entrega/suporte selecionada (data-taxa no radio).
+ * @returns {number}
+ */
+function taxaEntregaSuporteSelecionada() {
+    var el = document.querySelector('input[name="entrega-suporte"]:checked');
+    if (!el) return 0;
+    var raw = el.getAttribute('data-taxa');
+    if (raw == null || raw === '') return 0;
+    var n = Number(String(raw).replace(',', '.'));
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.round(n * 100) / 100;
+}
+
+/**
+ * Rótulo curto da taxa para o resumo do total.
+ * @param {number} taxa
+ * @returns {string}
+ */
+function rotuloTaxaEntregaSuporte(taxa) {
+    var t = Number(taxa) || 0;
+    if (t <= 0) return 'Sem custo adicional';
+    return 'A partir de R$ ' + formatarPreco(t);
+}
+
+/**
+ * Garante o bloco de detalhe (produtos + entrega) acima do total.
+ * @returns {HTMLElement|null}
+ */
+function garantirDetalheTotalCarrinho() {
+    var wrap = document.querySelector('.carrinho-total-wrap');
+    if (!wrap) return null;
+    var el = document.getElementById('carrinho-total-detalhe');
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = 'carrinho-total-detalhe';
+    el.className = 'carrinho-total-detalhe';
+    el.setAttribute('aria-live', 'polite');
+    wrap.insertBefore(el, wrap.firstChild);
+    return el;
+}
+
+/**
+ * Atualiza subtotal de produtos, taxa de entrega/suporte e total estimado.
+ */
+function atualizarResumoTotalCarrinho() {
+    const totalEl = document.getElementById('total');
+    const detalheEl = garantirDetalheTotalCarrinho();
+    const subtotal = calcularTotal();
+    const taxa = taxaEntregaSuporteSelecionada();
+    const totalComTaxa = Math.round((subtotal + taxa) * 100) / 100;
+
+    if (carrinho.length === 0) {
+        if (totalEl) totalEl.textContent = 'R$ 0,00';
+        if (detalheEl) {
+            detalheEl.classList.remove('is-visible');
+            detalheEl.innerHTML = '';
+        }
+        return;
+    }
+
+    if (detalheEl) {
+        if (document.querySelector('input[name="entrega-suporte"]:checked')) {
+            detalheEl.classList.add('is-visible');
+            detalheEl.innerHTML =
+                '<div class="carrinho-total-detalhe-linha"><span>Produtos</span><span>R$ ' + formatarPreco(subtotal) + '</span></div>' +
+                '<div class="carrinho-total-detalhe-linha"><span>Entrega e suporte</span><span>' + escapeHtml(rotuloTaxaEntregaSuporte(taxa)) + '</span></div>';
+        } else {
+            detalheEl.classList.remove('is-visible');
+            detalheEl.innerHTML = '';
+        }
+    }
+
+    if (totalEl) totalEl.textContent = 'R$ ' + formatarPreco(totalComTaxa);
+}
+
+/**
  * Atualiza a interface do carrinho (lista e total)
  */
 function atualizarCarrinho() {
     const listaEl = document.getElementById('lista-carrinho');
-    const totalEl = document.getElementById('total');
     const btnFinalizar = document.querySelector('.carrinho-sidebar .btn-finalizar-pedido');
 
     if (!listaEl) return;
@@ -190,7 +265,7 @@ function atualizarCarrinho() {
     listaEl.innerHTML = '';
 
     if (carrinho.length === 0) {
-        if (totalEl) totalEl.textContent = 'R$ 0,00';
+        atualizarResumoTotalCarrinho();
         if (btnFinalizar) btnFinalizar.disabled = true;
         return;
     }
@@ -226,17 +301,24 @@ function atualizarCarrinho() {
         listaEl.appendChild(li);
     });
 
-    const total = calcularTotal();
-    if (totalEl) totalEl.textContent = 'R$ ' + formatarPreco(total);
+    atualizarResumoTotalCarrinho();
     if (btnFinalizar) btnFinalizar.disabled = false;
 }
 
 /**
- * Calcula o valor total do carrinho
+ * Calcula o subtotal dos produtos do carrinho (sem taxa de entrega/suporte)
  * @returns {number}
  */
 function calcularTotal() {
     return carrinho.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
+}
+
+/**
+ * Total estimado com a taxa de entrega/suporte selecionada.
+ * @returns {number}
+ */
+function calcularTotalComEntregaSuporte() {
+    return Math.round((calcularTotal() + taxaEntregaSuporteSelecionada()) * 100) / 100;
 }
 
 /**
@@ -314,6 +396,7 @@ function initEntregaSuporteCarrinho() {
         radio.addEventListener('change', function (e) {
             e.stopPropagation();
             abrirCarrinho();
+            atualizarResumoTotalCarrinho();
             var opcao = radio.closest('.entrega-suporte-opcao');
             if (opcao && typeof opcao.scrollIntoView === 'function') {
                 opcao.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
