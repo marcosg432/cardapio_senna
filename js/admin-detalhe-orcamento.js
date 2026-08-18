@@ -20,6 +20,81 @@
         return Math.round(n * 100) / 100;
     }
 
+    var OBS_SUPORTES_CORTESIA_ADMIN = "Os suportes devem ser devolvidos na semana seguinte à festa.";
+
+    function entregaSuporteEhCortesiaAdmin(valor) {
+        return /cortesia/i.test(String(valor || ""));
+    }
+
+    function inferirEntregaRetirada(o) {
+        var t = String((o && o.entrega_retirada) || "").trim();
+        if (t === "Entrega" || t === "Retirada") return t;
+        var e = String((o && o.entrega) || "").trim();
+        if (/^entrega/i.test(e)) return "Entrega";
+        if (/retirada/i.test(e)) return "Retirada";
+        return "";
+    }
+
+    function inferirEnderecoEntrega(o) {
+        if (o && o.endereco != null && String(o.endereco).trim() !== "") {
+            return String(o.endereco).trim();
+        }
+        var e = String((o && o.entrega) || "");
+        var m = e.match(/^Entrega\s+[—\-]\s*(.*)$/);
+        if (m && String(m[1]).trim()) return String(m[1]).trim();
+        return "";
+    }
+
+    function montarTextoEntrega(tipo, endereco) {
+        if (tipo === "Entrega") return "Entrega — " + (endereco || "");
+        return tipo || "";
+    }
+
+    function garantirOpcaoSelect(sel, valor) {
+        if (!sel || valor == null || String(valor).trim() === "") return;
+        var v = String(valor).trim();
+        var existe = Array.prototype.some.call(sel.options, function (opt) {
+            return opt.value === v;
+        });
+        if (!existe) {
+            var extra = document.createElement("option");
+            extra.value = v;
+            extra.textContent = v;
+            sel.appendChild(extra);
+        }
+    }
+
+    function atualizarUiEntregaAdmin() {
+        var tipo = strInput("edit-entrega-retirada");
+        var wrap = document.getElementById("edit-endereco-wrap");
+        if (wrap) wrap.hidden = tipo !== "Entrega";
+        var suporte = strInput("edit-entrega-suporte");
+        var elEntSupObs = document.getElementById("view-entrega-suporte-obs");
+        if (elEntSupObs) {
+            if (entregaSuporteEhCortesiaAdmin(suporte)) {
+                elEntSupObs.textContent = "Observação (contrato): " + OBS_SUPORTES_CORTESIA_ADMIN;
+                elEntSupObs.hidden = false;
+            } else {
+                elEntSupObs.textContent = "";
+                elEntSupObs.hidden = true;
+            }
+        }
+        atualizarReferenciaTaxaEntrega(suporte);
+    }
+
+    function patchCamposEntregaDom() {
+        var tipo = strInput("edit-entrega-retirada");
+        var endereco = strInput("edit-endereco");
+        var suporte = strInput("edit-entrega-suporte");
+        return {
+            entrega_retirada: tipo || null,
+            endereco: tipo === "Entrega" && endereco ? endereco : null,
+            entrega: montarTextoEntrega(tipo, endereco) || null,
+            entrega_suporte: suporte || null,
+            entrega_suporte_obs: entregaSuporteEhCortesiaAdmin(suporte) ? OBS_SUPORTES_CORTESIA_ADMIN : null
+        };
+    }
+
     /**
      * Sugestão "a partir de" conforme a opção escolhida no site (só referência no admin).
      * @param {string} entregaSuporte
@@ -224,22 +299,18 @@
         document.getElementById("view-tipo-evento").textContent = eventoTipoOrc(o) || "—";
         document.getElementById("view-convidados").textContent = o.convidados != null ? o.convidados : "—";
         document.getElementById("view-local").textContent = localOrc(o) || "—";
-        document.getElementById("view-entrega").textContent = (o.entrega || o.entrega_retirada || "") + (o.endereco ? " — " + o.endereco : "");
-        var entregaSuporteV = String(o.entrega_suporte || "").trim();
-        var elEntSup = document.getElementById("view-entrega-suporte");
-        if (elEntSup) elEntSup.textContent = entregaSuporteV || "—";
-        var elEntSupObs = document.getElementById("view-entrega-suporte-obs");
-        if (elEntSupObs) {
-            var cortesia = /cortesia/i.test(entregaSuporteV) || (o.entrega_suporte_obs != null && String(o.entrega_suporte_obs).trim() !== "");
-            if (cortesia) {
-                elEntSupObs.textContent = "Observação: " + (o.entrega_suporte_obs && String(o.entrega_suporte_obs).trim() !== "" ? o.entrega_suporte_obs : "Os suportes devem ser devolvidos na semana seguinte à festa.");
-                elEntSupObs.hidden = false;
-            } else {
-                elEntSupObs.textContent = "";
-                elEntSupObs.hidden = true;
-            }
+        var selTipoEnt = document.getElementById("edit-entrega-retirada");
+        if (selTipoEnt) {
+            selTipoEnt.value = inferirEntregaRetirada(o);
         }
-        atualizarReferenciaTaxaEntrega(entregaSuporteV);
+        var elEndereco = document.getElementById("edit-endereco");
+        if (elEndereco) elEndereco.value = inferirEnderecoEntrega(o);
+        var selSuporte = document.getElementById("edit-entrega-suporte");
+        if (selSuporte) {
+            garantirOpcaoSelect(selSuporte, o.entrega_suporte);
+            selSuporte.value = String(o.entrega_suporte || "").trim();
+        }
+        atualizarUiEntregaAdmin();
         var elDataPagPrev = document.getElementById("view-data-pag-entrada-prevista");
         if (elDataPagPrev) {
             var dpp = String(o.data_pagamento_entrada_prevista || "").trim();
@@ -618,8 +689,6 @@
             observacoes_internas: observacoesInternasAtual(),
             forma_pagamento: strInput("forma-pagamento-adm") || null,
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
-            entrega_suporte: orcamentoAtual && orcamentoAtual.entrega_suporte != null ? orcamentoAtual.entrega_suporte : null,
-            entrega_suporte_obs: orcamentoAtual && orcamentoAtual.entrega_suporte_obs != null ? orcamentoAtual.entrega_suporte_obs : null,
             data_pagamento_entrada_prevista: strInput("data-pag-entrada-prevista") || null,
             entrada: entrada,
             restante: restante,
@@ -646,7 +715,8 @@
             /* Obrigatório para PATCH: sem isto o servidor mantinha itens antigos ao incluir complementos manuais */
             itens: JSON.parse(JSON.stringify(orcamentoAtual.itens || []))
             },
-            patchCamposClienteEventoPdfDom()
+            patchCamposClienteEventoPdfDom(),
+            patchCamposEntregaDom()
         );
     }
 
@@ -677,7 +747,8 @@
             pagamento_valor_quitado_em: strInput("contrato-quitado-em") || null,
             observacoes_internas: observacoesInternasAtual()
             },
-            patchCamposClienteEventoPdfDom()
+            patchCamposClienteEventoPdfDom(),
+            patchCamposEntregaDom()
         );
     }
 
@@ -725,6 +796,14 @@
         document.getElementById("entrada").addEventListener("input", function () {
             atualizarPreviewFinal(orcamentoAtual);
         });
+        var selTipoEntInit = document.getElementById("edit-entrega-retirada");
+        if (selTipoEntInit) {
+            selTipoEntInit.addEventListener("change", atualizarUiEntregaAdmin);
+        }
+        var selSuporteInit = document.getElementById("edit-entrega-suporte");
+        if (selSuporteInit) {
+            selSuporteInit.addEventListener("change", atualizarUiEntregaAdmin);
+        }
 
         document.getElementById("btn-salvar").addEventListener("click", function () {
             var tipo = document.getElementById("desconto-tipo").value || null;
@@ -777,7 +856,8 @@
         document.getElementById("btn-whatsapp-orc").addEventListener("click", function () {
             var fresh = getOrcamentoPorId(orcamentoAtual.id);
             if (!fresh) return;
-            var msg = montarWhatsAppDetalhe(fresh);
+            var dadosWpp = Object.assign({}, fresh, patchComumExtra());
+            var msg = montarWhatsAppDetalhe(dadosWpp);
             var tel = (CONFIG && CONFIG.telefoneWhatsApp) ? CONFIG.telefoneWhatsApp : "5519981178167";
             window.open("https://wa.me/" + tel + "?text=" + encodeURIComponent(msg), "_blank");
         });

@@ -275,6 +275,10 @@
     font-family: inherit;
 }
 
+.admin-detalhe select.admin-select-largo {
+    max-width: min(100%, 36rem);
+}
+
 .admin-tag-status {
     display: inline-block;
     padding: 0.2rem 0.5rem;

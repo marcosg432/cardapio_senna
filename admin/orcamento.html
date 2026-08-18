@@ -40,8 +40,27 @@
                 <p><strong>Tipo:</strong> <span id="view-tipo-evento"></span></p>
                 <p><strong>Convidados:</strong> <span id="view-convidados"></span></p>
                 <p><strong>Local:</strong> <span id="view-local"></span></p>
-                <p><strong>Entrega / retirada:</strong> <span id="view-entrega"></span></p>
-                <p><strong>Forma de entrega/suporte:</strong> <span id="view-entrega-suporte"></span></p>
+
+                <h3 class="admin-secao-titulo">Entrega</h3>
+                <p class="admin-campo-ajuda">Corrige o que a cliente escolheu no site. A forma de entrega/suporte é o campo que entra no contrato como «Forma escolhida».</p>
+                <label for="edit-entrega-retirada">Entrega ou retirada</label>
+                <select id="edit-entrega-retirada">
+                    <option value="">Selecione</option>
+                    <option value="Retirada">Retirada</option>
+                    <option value="Entrega">Entrega</option>
+                </select>
+                <div id="edit-endereco-wrap" hidden>
+                    <label for="edit-endereco">Endereço de entrega</label>
+                    <input type="text" id="edit-endereco" placeholder="Rua, número, bairro, cidade" autocomplete="street-address">
+                </div>
+                <label for="edit-entrega-suporte">Forma de entrega e suporte</label>
+                <select id="edit-entrega-suporte" class="admin-select-largo">
+                    <option value="">Selecione</option>
+                    <option value="Apenas retirada dos doces sem entrega">Apenas retirada dos doces (sem entrega)</option>
+                    <option value="Apenas entrega sem montagem">Apenas entrega sem montagem</option>
+                    <option value="Entrega dos doces com montagem - suportes da decoração">Entrega com montagem — suportes da decoração</option>
+                    <option value="Entrega dos doces com montagem - suportes cortesia">Entrega com montagem — suportes cortesia</option>
+                </select>
                 <p id="view-entrega-suporte-obs" class="admin-aviso-cortesia" hidden></p>
                 <p><strong>Data prevista p/ pagamento da entrada (cliente):</strong> <span id="view-data-pag-entrada-prevista"></span></p>
                 <p><strong>Observações:</strong> <span id="view-obs"></span></p>
