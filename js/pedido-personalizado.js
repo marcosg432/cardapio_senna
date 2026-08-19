@@ -6,7 +6,7 @@
     'use strict';
 
     var PRECO_ESPECIALIDADES_KG = 90;
-    var PRECO_QUERIDINHOS_KG = 70;
+    var PRECO_QUERIDINHOS_KG = 80;
 
     /** 'monte' | 'corte' */
     var fluxoAtivo = 'monte';
