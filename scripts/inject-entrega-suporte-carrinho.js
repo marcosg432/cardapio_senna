@@ -63,6 +63,7 @@ const FILES = [
     path.join(root, "pages", "linha-afetiva.html"),
     path.join(root, "pages", "linha-classica.html"),
     path.join(root, "pages", "linha-exclusiva.html"),
+    path.join(root, "pages", "pacotes.html"),
     path.join(root, "pages", "pedido-personalizado.html"),
     path.join(root, "pages", "sobremesas-tortas.html")
 ];

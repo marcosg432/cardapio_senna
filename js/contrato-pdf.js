@@ -220,8 +220,10 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         orcamento.itens.forEach(function (it) {
             var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
             var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
-            var linhaItem =
-                (it.quantidade || 0) + " × " + (it.nome || "") + " — " + formatarMoedaPdf(sub);
+            var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
+                ? formatarQtdNomeItemOrcamento(it)
+                : (it.quantidade || 0) + " × " + (it.nome || "");
+            var linhaItem = linhaQtd + " — " + formatarMoedaPdf(sub);
             garantirEspaco(10);
             var linhasItem = doc.splitTextToSize(linhaItem, maxW - 4);
             doc.text(linhasItem, margem + 2, y);
@@ -237,8 +239,8 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
     doc.rect(margem, yResumoTopo, maxW, y - yResumoTopo + 3);
     y += 5;
 
-    var obsInternas = orcCampo(orcamento, ["observacoes_internas"], "");
-    if (obsInternas && obsInternas !== "—") {
+    function desenharBlocoObservacao(titulo, textoObs) {
+        if (!textoObs || textoObs === "—") return;
         garantirEspaco(20);
         var yObsTopo = y;
         doc.setFillColor(240, 232, 222);
@@ -246,13 +248,12 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         doc.setFontSize(9.5);
         doc.setFont(undefined, "bold");
         doc.setTextColor(45, 38, 32);
-        doc.text("OBSERVAÇÕES DA CONTRATADA", margem + 2, y + 5);
+        doc.text(titulo, margem + 2, y + 5);
         doc.setFont(undefined, "normal");
         y += 9;
         doc.setFontSize(8.6);
         doc.setTextColor(30, 25, 22);
-        var paragrafosObs = String(obsInternas).split(/\r?\n/);
-        paragrafosObs.forEach(function (par) {
+        String(textoObs).split(/\r?\n/).forEach(function (par) {
             var texto = par === "" ? " " : par;
             var linhasObs = doc.splitTextToSize(texto, maxW - 4);
             linhasObs.forEach(function (ln) {
@@ -267,6 +268,10 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         doc.rect(margem, yObsTopo, maxW, y - yObsTopo + 1);
         y += 5;
     }
+
+    /* Campo Observações do orçamento (pedido / admin) — era ignorado no contrato. */
+    desenharBlocoObservacao("OBSERVAÇÕES", orcCampo(orcamento, ["observacoes"], ""));
+    desenharBlocoObservacao("OBSERVAÇÕES DA CONTRATADA", orcCampo(orcamento, ["observacoes_internas"], ""));
 
     return y;
 }

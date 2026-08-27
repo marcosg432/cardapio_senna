@@ -80,7 +80,10 @@ function gerarOrcamentoPropostaPDF(orcamento) {
         orcamento.itens.forEach(function (it) {
             var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
             var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
-            linha((it.quantidade || 0) + " x " + (it.nome || "") + " — " + formatarMoedaOrcPdf(sub), 6);
+            var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
+                ? formatarQtdNomeItemOrcamento(it)
+                : (it.quantidade || 0) + " x " + (it.nome || "");
+            linha(linhaQtd + " — " + formatarMoedaOrcPdf(sub), 6);
         });
     } else {
         linha("(sem itens)", 6);

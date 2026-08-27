@@ -14,7 +14,8 @@ const CONFIG = {
     nomeEmpresa: "Candy Li Doces Finos",
     /**
      * Pedido mínimo em unidades por produto e por sabor (orçamento / cardápio).
-     * Usado como padrão para todos os itens; `data-produto-qtd-min` no card só pode aumentar esse mínimo.
+     * Usado como padrão quando o card não define `data-produto-qtd-min`.
+     * Valor explícito no card (ex.: pacotes) é respeitado, inclusive abaixo deste padrão.
      */
     pedidoMinimoUnidades: 50,
     /** Senha da área administrativa (troque em produção) */

@@ -58,3 +58,28 @@ function calcularValorRestanteOrcamento(valorFinal, entrada) {
     var rest = vf - ent;
     return Math.round(Math.max(0, rest) * 100) / 100;
 }
+
+/**
+ * Rótulo da unidade de venda (pacote, cento ou unidade).
+ * @param {string} [unidade]
+ * @param {number} [qtd]
+ */
+function rotuloUnidadeVenda(unidade, qtd) {
+    var u = String(unidade || "").trim().toLowerCase();
+    var plural = Number(qtd) !== 1;
+    if (u === "pacote") return plural ? "pacotes" : "pacote";
+    if (u === "cento") return plural ? "centos" : "cento";
+    return plural ? "unidades" : "unidade";
+}
+
+/**
+ * Linha de item com quantidade + unidade (quando houver) + nome.
+ * Sem unidade: "50 × Camafeu". Com unidade: "1 pacote × Pacote simples".
+ */
+function formatarQtdNomeItemOrcamento(it) {
+    var q = it && it.quantidade != null ? it.quantidade : 0;
+    var nome = (it && it.nome) || "";
+    var u = it && it.unidade ? String(it.unidade).trim() : "";
+    if (!u) return q + " × " + nome;
+    return q + " " + rotuloUnidadeVenda(u, q) + " × " + nome;
+}

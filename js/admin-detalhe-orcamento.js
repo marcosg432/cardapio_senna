@@ -223,6 +223,19 @@
         return null;
     }
 
+    /** Observações do orçamento (pedido): textarea do admin, depois o valor gravado. */
+    function observacoesOrcamentoAtual() {
+        var el = document.getElementById("edit-observacoes");
+        if (el && typeof el.blur === "function") el.blur();
+        var t = strInput("edit-observacoes");
+        if (t) return t;
+        if (orcamentoAtual && orcamentoAtual.observacoes != null) {
+            var s = String(orcamentoAtual.observacoes).trim();
+            if (s) return s;
+        }
+        return null;
+    }
+
     function montarWhatsAppDetalhe(o) {
         var vo =
             typeof valorOriginalOrcamentoComItens === "function"
@@ -253,7 +266,10 @@
         (o.itens || []).forEach(function (it) {
             var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
             var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
-            msg += (it.quantidade || 0) + "x " + (it.nome || "") + " — R$ " + Number(sub).toFixed(2).replace(".", ",") + "\n";
+            var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
+                ? formatarQtdNomeItemOrcamento(it)
+                : (it.quantidade || 0) + "x " + (it.nome || "");
+            msg += linhaQtd + " — R$ " + Number(sub).toFixed(2).replace(".", ",") + "\n";
         });
         msg += "\nSubtotal (produtos): R$ " + Number(vo).toFixed(2).replace(".", ",");
         var dd = valorMonetarioOrcamentoOpcional(o.desconto_degustacao);
@@ -281,6 +297,8 @@
             msg += "\nEntrada: R$ " + Number(ent || 0).toFixed(2).replace(".", ",");
             msg += "\nRestante: R$ " + Number(rest || 0).toFixed(2).replace(".", ",");
         }
+        var obsW = String(o.observacoes || "").trim();
+        if (obsW) msg += "\n\nObservações: " + obsW;
         msg += "\n\nRef: " + o.id;
         msg += "\n-------------";
         return msg;
@@ -320,7 +338,8 @@
             }
             elDataPagPrev.textContent = dpp ? dpp : "—";
         }
-        document.getElementById("view-obs").textContent = o.observacoes || "—";
+        var elObsPedido = document.getElementById("edit-observacoes");
+        if (elObsPedido) elObsPedido.value = o.observacoes || "";
 
         function setCampoContrato(id, valor) {
             var el = document.getElementById(id);
@@ -368,8 +387,10 @@
             li.className = "admin-lista-item-linha" + (it.extra_pedido_admin === true ? " admin-lista-item-linha--extra" : "");
             var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
             var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
-            var linha =
-                it.quantidade + " × " + (it.nome || "") + " @ " + formatarMoeda(pu) + " = " + formatarMoeda(sub);
+            var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
+                ? formatarQtdNomeItemOrcamento(it)
+                : it.quantidade + " × " + (it.nome || "");
+            var linha = linhaQtd + " @ " + formatarMoeda(pu) + " = " + formatarMoeda(sub);
             if (it.extra_pedido_admin === true) linha += " (complemento manual)";
             var spanTxt = document.createElement("span");
             spanTxt.className = "admin-lista-item-texto";
@@ -477,11 +498,12 @@
         var raw = it.qtd_min != null ? it.qtd_min : it.qtdMin != null ? it.qtdMin : padrao;
         var m = parseInt(String(raw), 10);
         if (!Number.isFinite(m) || m < 1) return padrao;
-        return Math.max(padrao, m);
+        return m;
     }
 
     function montarItemOrcamentoEditado(itemAnterior, nome, q, precoUnit) {
         var subtotalItem = Math.round(q * precoUnit * 100) / 100;
+        var unidadeItem = itemAnterior && itemAnterior.unidade ? String(itemAnterior.unidade).trim() : "";
         if (itemAnterior && itemAnterior.extra_pedido_admin === true) {
             return {
                 nome: nome,
@@ -490,7 +512,8 @@
                 preco_unitario: precoUnit,
                 subtotal: subtotalItem,
                 qtd_min: 1,
-                extra_pedido_admin: true
+                extra_pedido_admin: true,
+                unidade: unidadeItem
             };
         }
         var qm = itemAnterior
@@ -506,7 +529,8 @@
             preco: precoUnit,
             preco_unitario: precoUnit,
             subtotal: subtotalItem,
-            qtd_min: qm
+            qtd_min: qm,
+            unidade: unidadeItem
         };
     }
 
@@ -527,7 +551,10 @@
                 tit.textContent = "Editar item do cardápio";
                 if (hintMin) {
                     var minQ = qtdMinItemOrcamento(itEd);
-                    hintMin.textContent = "Pedido mínimo deste item: " + minQ + " unidade(s).";
+                    var rotuloMin = typeof rotuloUnidadeVenda === "function"
+                        ? rotuloUnidadeVenda(itEd && itEd.unidade, minQ)
+                        : "unidade(s)";
+                    hintMin.textContent = "Pedido mínimo deste item: " + minQ + " " + rotuloMin + ".";
                     hintMin.hidden = false;
                 }
             }
@@ -686,6 +713,7 @@
             degustacao_data: strInput("degustacao-data") || null,
             degustacao_hora: strInput("degustacao-hora") || null,
             degustacao_obs: strInput("degustacao-obs") || null,
+            observacoes: observacoesOrcamentoAtual(),
             observacoes_internas: observacoesInternasAtual(),
             forma_pagamento: strInput("forma-pagamento-adm") || null,
             forma_pagamento_ref: strInput("forma-pagamento-adm") || null,
@@ -745,6 +773,7 @@
             evento_fotografo: strInput("contrato-fotografo") || null,
             evento_fotografo_tel: strInput("contrato-fotografo-tel") || null,
             pagamento_valor_quitado_em: strInput("contrato-quitado-em") || null,
+            observacoes: observacoesOrcamentoAtual(),
             observacoes_internas: observacoesInternasAtual()
             },
             patchCamposClienteEventoPdfDom(),
@@ -899,6 +928,7 @@
             var stContrato = CONFIG.STATUS_ORCAMENTO && CONFIG.STATUS_ORCAMENTO.CONTRATO_GERADO;
 
             var extra = patchComumExtra();
+            extra.observacoes = observacoesOrcamentoAtual();
             extra.observacoes_internas = observacoesInternasAtual();
             extra.itens = itensContrato;
             extra.valor_original = voSnap;
@@ -939,6 +969,7 @@
             /* Tudo que está nos campos #contrato-* / #contrato-pdf-* do anexo sobrepõe o objeto do servidor antes do PDF */
             var anexoDoForm = patchCamposAnexoPdf();
             dadosPdf = Object.assign({}, dadosPdf, anexoDoForm);
+            dadosPdf.observacoes = observacoesOrcamentoAtual() || dadosPdf.observacoes || null;
             dadosPdf.observacoes_internas = observacoesInternasAtual() || dadosPdf.observacoes_internas || null;
             /* Se não bater com o servidor, o PDF mesmo assim sai certo pelo merge local */
 
@@ -1052,7 +1083,10 @@
                 if (itemAnterior.extra_pedido_admin !== true) {
                     var minCard = qtdMinItemOrcamento(itemAnterior);
                     if (q < minCard) {
-                        alert("Quantidade mínima para este item: " + minCard + " unidade(s).");
+                        var rotuloMinCard = typeof rotuloUnidadeVenda === "function"
+                            ? rotuloUnidadeVenda(itemAnterior.unidade, minCard)
+                            : "unidade(s)";
+                        alert("Quantidade mínima para este item: " + minCard + " " + rotuloMinCard + ".");
                         return;
                     }
                 }

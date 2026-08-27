@@ -47,7 +47,7 @@ function validarQuantidadesItensOrcamento(obj) {
       10
     );
     const min =
-      !Number.isFinite(rawMin) || rawMin < 1 ? PADRAO_MIN : Math.max(PADRAO_MIN, rawMin);
+      !Number.isFinite(rawMin) || rawMin < 1 ? PADRAO_MIN : rawMin;
     const q = parseInt(it.quantidade, 10);
     if (!Number.isFinite(q) || q < min) {
       return `Quantidade inválida para "${nome}": o pedido mínimo é ${min} unidade(s).`;

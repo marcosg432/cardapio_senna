@@ -14,7 +14,7 @@ function qtdMinDoItemCarrinho(item) {
     }
     var m = parseInt(item && item.qtdMin != null ? item.qtdMin : padrao, 10);
     if (!Number.isFinite(m) || m < 1) return padrao;
-    return Math.max(padrao, m);
+    return m;
 }
 
 function validarQuantidadesCarrinho() {
@@ -24,7 +24,10 @@ function validarQuantidadesCarrinho() {
         var min = qtdMinDoItemCarrinho(item);
         var q = parseInt(String(item.quantidade), 10);
         if (!Number.isFinite(q) || q < min) {
-            return "A quantidade de \"" + String(item.nome || "").replace(/"/g, "'") + "\" deve ser no mínimo " + min + " unidade(s). Ajuste no carrinho e tente novamente.";
+            var rotuloMin = typeof rotuloUnidadeVenda === "function"
+                ? rotuloUnidadeVenda(item.unidade, min)
+                : "unidade(s)";
+            return "A quantidade de \"" + String(item.nome || "").replace(/"/g, "'") + "\" deve ser no mínimo " + min + " " + rotuloMin + ". Ajuste no carrinho e tente novamente.";
         }
     }
     return null;
@@ -40,7 +43,8 @@ function montarItensOrcamentoDoCarrinho() {
             preco: item.preco,
             preco_unitario: item.preco,
             subtotal: subtotal,
-            qtd_min: min
+            qtd_min: min,
+            unidade: item.unidade ? String(item.unidade).trim() : ""
         };
     });
 }
@@ -107,7 +111,10 @@ function montarMensagemOrcamento(orcId) {
     msg += "ITENS (pré-orçamento):\n";
     carrinho.forEach(function (item) {
         var subtotal = item.preco * item.quantidade;
-        msg += item.quantidade + "x " + item.nome + " - R$ " + formatarPreco(subtotal) + "\n";
+        var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
+            ? formatarQtdNomeItemOrcamento(item)
+            : item.quantidade + "x " + item.nome;
+        msg += linhaQtd + " - R$ " + formatarPreco(subtotal) + "\n";
     });
     msg += "\nSubtotal produtos: R$ " + formatarPreco(valorOriginal) + "\n";
     if (taxaEntrega > 0) {

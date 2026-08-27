@@ -3,7 +3,7 @@
  * Sistema de pedidos reutilizável para cardápios digitais
  */
 
-/** Array do carrinho: { nome, preco, quantidade, qtdMin } */
+/** Array do carrinho: { nome, preco, quantidade, qtdMin, unidade } */
 let carrinho = [];
 
 const QTD_LISTA_DELEGATED = 'data-carrinho-qty-delegated';
@@ -21,7 +21,7 @@ function getPedidoMinimoPadrao() {
 }
 
 /**
- * Quantidade mínima por item: padrão do CONFIG; valor explícito no card não pode ser menor que o padrão.
+ * Quantidade mínima por item: padrão do CONFIG; valor explícito no card é respeitado (pode ser menor, ex. pacotes).
  * @param {*} v
  * @returns {number}
  */
@@ -30,7 +30,7 @@ function resolverQtdMin(v) {
     if (v == null || v === '') return padrao;
     const n = parseInt(String(v), 10);
     if (!Number.isFinite(n) || n < 1) return padrao;
-    return Math.max(padrao, n);
+    return n;
 }
 
 /**
@@ -60,7 +60,8 @@ function normalizarItemCarrinho(item) {
         nome: item.nome,
         preco: typeof item.preco === 'number' ? item.preco : parseFloat(String(item.preco).replace(',', '.')) || 0,
         quantidade: q,
-        qtdMin: min
+        qtdMin: min,
+        unidade: item.unidade ? String(item.unidade) : ''
     };
 }
 
@@ -114,20 +115,23 @@ function vincularDelegacaoQuantidadeLista(listaEl) {
  * @param {string} nome - Nome do produto
  * @param {number} preco - Preço unitário
  * @param {number} [qtdMinProduto] - Pedido mínimo (padrão CONFIG); na 1ª inclusão a quantidade inicia neste valor
+ * @param {string} [unidade] - Unidade de venda (ex.: pacote, cento); vazio = unidade
  */
-function adicionarCarrinho(nome, preco, qtdMinProduto) {
+function adicionarCarrinho(nome, preco, qtdMinProduto, unidade) {
     const precoNum = typeof preco === 'number' ? preco : parseFloat(String(preco).replace(',', '.')) || 0;
     const qtdMin = resolverQtdMin(qtdMinProduto);
+    const unidadeNorm = unidade ? String(unidade).trim() : '';
     const itemExistente = carrinho.find(item => item.nome === nome && item.preco === precoNum);
 
     if (itemExistente) {
         itemExistente.quantidade += 1;
         itemExistente.qtdMin = resolverQtdMin(itemExistente.qtdMin || qtdMin);
+        if (unidadeNorm) itemExistente.unidade = unidadeNorm;
         if (itemExistente.quantidade < itemExistente.qtdMin) {
             itemExistente.quantidade = itemExistente.qtdMin;
         }
     } else {
-        carrinho.push({ nome, preco: precoNum, quantidade: qtdMin, qtdMin });
+        carrinho.push({ nome, preco: precoNum, quantidade: qtdMin, qtdMin, unidade: unidadeNorm });
     }
 
     salvarCarrinho(carrinho);
@@ -275,12 +279,14 @@ function atualizarCarrinho() {
         const q = parseInt(String(item.quantidade), 10);
         const subtotal = item.preco * q;
         const noLimiteMin = q <= min;
+        const unidadeRotulo = rotuloUnidadeCarrinho(item.unidade, q);
+        const unidadePreco = rotuloUnidadeCarrinho(item.unidade, 1);
         const li = document.createElement('li');
         li.className = 'carrinho-item';
         li.innerHTML = `
             <div class="carrinho-item-info">
                 <div class="carrinho-item-nome">${escapeHtml(item.nome)}</div>
-                <div class="carrinho-item-preco-unit">R$ ${formatarPreco(item.preco)} un.</div>
+                <div class="carrinho-item-preco-unit">R$ ${formatarPreco(item.preco)} / ${escapeHtml(unidadePreco)}</div>
             </div>
             <div class="carrinho-item-controles carrinho-item-controles--com-qty">
                 <div class="carrinho-item-qty-wrap">
@@ -292,7 +298,7 @@ function atualizarCarrinho() {
                             value="${q}" />
                         <button type="button" aria-label="Aumentar quantidade" onclick="alterarQuantidade(${index}, 'aumentar')">+</button>
                     </div>
-                    <p class="carrinho-item-qty-hint">Pedido mínimo: ${min} ${min === 1 ? 'unidade' : 'unidades'}</p>
+                    <p class="carrinho-item-qty-hint">Pedido mínimo: ${min} ${escapeHtml(unidadeRotulo)}</p>
                 </div>
                 <button type="button" class="carrinho-item-remove" onclick="removerItem(${index})">Remover</button>
             </div>
@@ -328,6 +334,24 @@ function calcularTotalComEntregaSuporte() {
  */
 function formatarPreco(valor) {
     return Number(valor).toFixed(2).replace('.', ',');
+}
+
+/**
+ * Rótulo da unidade de venda no carrinho (pacote, cento ou unidade).
+ * @param {string} [unidade]
+ * @param {number} [qtd]
+ * @returns {string}
+ */
+function rotuloUnidadeCarrinho(unidade, qtd) {
+    if (typeof rotuloUnidadeVenda === 'function') {
+        return rotuloUnidadeVenda(unidade, qtd);
+    }
+    const u = String(unidade || '').trim().toLowerCase();
+    const n = Number(qtd);
+    const plural = Number.isFinite(n) && n !== 1;
+    if (u === 'pacote') return plural ? 'pacotes' : 'pacote';
+    if (u === 'cento') return plural ? 'centos' : 'cento';
+    return plural ? 'unidades' : 'unidade';
 }
 
 /**
@@ -447,7 +471,8 @@ function initCarrinho() {
             const preco = parseFloat(card.dataset.produtoPreco || card.getAttribute('data-produto-preco')) ||
                 extrairPreco(card.querySelector('.produto-preco')?.textContent || '');
             const qtdMin = lerQtdMinDoCard(card);
-            adicionarCarrinho(nome, preco, qtdMin);
+            const unidade = card.dataset.produtoUnidade || card.getAttribute('data-produto-unidade') || '';
+            adicionarCarrinho(nome, preco, qtdMin, unidade);
         });
     });
 
@@ -471,7 +496,7 @@ function garantirAvisoPedidoMinimoGlobal() {
         lista.parentNode.insertBefore(el, lista);
     }
     const min = getPedidoMinimoPadrao();
-    el.textContent = 'Pedido mínimo de ' + min + ' unidades por produto e por sabor (padrão do cardápio).';
+    el.textContent = 'Pedido mínimo de ' + min + ' unidades por produto e por sabor (padrão do cardápio). Pacotes seguem a quantidade mínima do próprio item.';
 }
 
 document.addEventListener('DOMContentLoaded', initCarrinho);

@@ -1944,6 +1944,50 @@ body.pagina-bolos .page-hero--bolos p {
     text-shadow: 0 1px 18px rgba(0, 0, 0, 0.35);
 }
 
+/* Pacotes — topo com foto de celebração */
+.page-hero--pacotes {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background: none;
+}
+
+.page-hero--pacotes::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('../assets/linha-afetiva/linha-afetiva-hero-celebracao.png');
+    background-size: cover;
+    background-position: center 38%;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.page-hero--pacotes::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(15, 28, 38, 0.78) 0%, rgba(21, 42, 56, 0.5) 45%, rgba(15, 28, 38, 0.9) 100%),
+        radial-gradient(ellipse 90% 70% at 50% 35%, transparent 0%, rgba(15, 28, 38, 0.55) 100%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.page-hero--pacotes .page-hero-inner {
+    position: relative;
+    z-index: 2;
+}
+
+.page-hero--pacotes h1 {
+    text-shadow: 0 2px 28px rgba(0, 0, 0, 0.45);
+}
+
+.page-hero--pacotes p {
+    color: rgba(252, 248, 244, 0.92);
+    text-shadow: 0 1px 18px rgba(0, 0, 0, 0.35);
+}
+
 .cardapio-intro {
     text-align: center;
     padding: 2rem 1rem;
