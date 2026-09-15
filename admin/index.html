@@ -36,7 +36,26 @@
             <div class="admin-card">
                 <h1>Lista de orçamentos</h1>
                 <p style="font-size:0.9rem;opacity:0.85">Os dados ficam neste navegador (localStorage), na mesma “origem” do cardápio. Para produção com equipe, use PostgreSQL + API ou Supabase.</p>
+
+                <div class="admin-busca" id="admin-busca" hidden>
+                    <div class="admin-busca-linha">
+                        <label class="admin-busca-label" for="filtro-orcamentos">Buscar orçamento ou contrato</label>
+                        <div class="admin-busca-campo">
+                            <input type="search" id="filtro-orcamentos" placeholder="Nome da cliente, data da festa (ex.: 15/09/2026), telefone ou nº…" autocomplete="off" enterkeyhint="search">
+                            <button type="button" class="admin-btn admin-btn-sec admin-busca-limpar" id="btn-limpar-busca" hidden>Limpar</button>
+                        </div>
+                    </div>
+                    <div class="admin-busca-linha admin-busca-linha--status">
+                        <label class="admin-busca-label" for="filtro-status">Status</label>
+                        <select id="filtro-status" aria-label="Filtrar por status">
+                            <option value="">Todos os status</option>
+                        </select>
+                    </div>
+                    <p class="admin-busca-resultado" id="busca-resultado" aria-live="polite"></p>
+                </div>
+
                 <p id="sem-orcamentos" hidden>Nenhum orçamento salvo ainda. Gere um pelo carrinho do site.</p>
+                <p id="sem-resultados-busca" hidden>Nenhum orçamento encontrado com esse filtro. Tente outro nome, data ou status.</p>
                 <div class="admin-table-wrap">
                     <table class="admin-table" id="tabela-orcamentos">
                         <thead>
@@ -102,21 +121,150 @@
                 if (mainEl && !mainEl.hidden) renderTabela();
             });
 
+            function normalizarTextoBusca(s) {
+                return String(s || '')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim();
+            }
+
+            function dataEventoParaBusca(dataIso) {
+                var raw = String(dataIso || '').trim();
+                if (!raw) return '';
+                var m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (m) {
+                    return [
+                        raw,
+                        m[3] + '/' + m[2] + '/' + m[1],
+                        m[3] + '/' + m[2],
+                        m[3] + m[2] + m[1],
+                        m[1] + m[2] + m[3]
+                    ].join(' ');
+                }
+                return raw;
+            }
+
+            function statusLabel(o) {
+                var stKey = statusNormalizado(o);
+                if (CONFIG.STATUS_LABELS && CONFIG.STATUS_LABELS[stKey]) return CONFIG.STATUS_LABELS[stKey];
+                return o.status || stKey || '';
+            }
+
+            function textoBuscavelOrcamento(o) {
+                var nome = o.cliente != null && o.cliente !== '' ? o.cliente : o.nome_cliente;
+                var dataEvt = eventoDataOrc(o);
+                var tel = o.telefone || o.contato_celular || '';
+                var partes = [
+                    nome,
+                    o.email,
+                    tel,
+                    String(tel).replace(/\D/g, ''),
+                    dataEventoParaBusca(dataEvt),
+                    statusLabel(o),
+                    statusNormalizado(o),
+                    o.id,
+                    o.contrato_numero_exibicao,
+                    eventoTipoOrc(o),
+                    localOrc(o)
+                ];
+                return normalizarTextoBusca(partes.join(' '));
+            }
+
+            function obterFiltros() {
+                var input = document.getElementById('filtro-orcamentos');
+                var sel = document.getElementById('filtro-status');
+                return {
+                    texto: normalizarTextoBusca(input ? input.value : ''),
+                    status: sel ? String(sel.value || '') : ''
+                };
+            }
+
+            function filtrarLista(lista) {
+                var f = obterFiltros();
+                return lista.filter(function (o) {
+                    if (f.status && statusNormalizado(o) !== f.status) return false;
+                    if (!f.texto) return true;
+                    return textoBuscavelOrcamento(o).indexOf(f.texto) !== -1;
+                });
+            }
+
+            function preencherOpcoesStatus() {
+                var sel = document.getElementById('filtro-status');
+                if (!sel || sel.getAttribute('data-preenchido') === '1') return;
+                var labels = (typeof CONFIG !== 'undefined' && CONFIG.STATUS_LABELS) ? CONFIG.STATUS_LABELS : {};
+                Object.keys(labels).forEach(function (key) {
+                    var opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = labels[key];
+                    sel.appendChild(opt);
+                });
+                sel.setAttribute('data-preenchido', '1');
+            }
+
+            function atualizarUiBusca(total, filtrados) {
+                var box = document.getElementById('admin-busca');
+                var limpar = document.getElementById('btn-limpar-busca');
+                var res = document.getElementById('busca-resultado');
+                var f = obterFiltros();
+                var ativo = !!(f.texto || f.status);
+
+                if (box) box.hidden = total === 0;
+                if (limpar) limpar.hidden = !ativo;
+
+                if (!res) return;
+                if (total === 0) {
+                    res.textContent = '';
+                    return;
+                }
+                if (!ativo) {
+                    res.textContent = total === 1
+                        ? '1 orçamento na lista.'
+                        : total + ' orçamentos na lista.';
+                    return;
+                }
+                if (filtrados === 0) {
+                    res.textContent = 'Nenhum resultado para o filtro atual.';
+                    return;
+                }
+                res.textContent = filtrados === 1
+                    ? '1 resultado encontrado.'
+                    : filtrados + ' resultados encontrados (de ' + total + ').';
+            }
+
             function renderTabela() {
                 var lista = listarOrcamentos();
+                var filtrada = filtrarLista(lista);
                 var tbody = document.getElementById('tbody-orcamentos');
                 var vazio = document.getElementById('sem-orcamentos');
+                var semBusca = document.getElementById('sem-resultados-busca');
                 var tab = document.getElementById('tabela-orcamentos');
+                var f = obterFiltros();
+                var filtroAtivo = !!(f.texto || f.status);
+
+                preencherOpcoesStatus();
                 tbody.innerHTML = '';
+                atualizarUiBusca(lista.length, filtrada.length);
+
                 if (!lista.length) {
                     vazio.hidden = false;
+                    if (semBusca) semBusca.hidden = true;
                     tab.hidden = true;
                     return;
                 }
+
                 vazio.hidden = true;
+
+                if (!filtrada.length) {
+                    if (semBusca) semBusca.hidden = false;
+                    tab.hidden = true;
+                    return;
+                }
+
+                if (semBusca) semBusca.hidden = true;
                 tab.hidden = false;
 
-                lista.forEach(function (o) {
+                filtrada.forEach(function (o) {
                     var nomeCliente = o.cliente != null && o.cliente !== '' ? o.cliente : o.nome_cliente;
                     var dataEvt = eventoDataOrc(o);
                     var vOrig = valorOriginalOrcCompat(o);
@@ -126,6 +274,7 @@
                     var label = (CONFIG.STATUS_LABELS && CONFIG.STATUS_LABELS[stKey]) ? CONFIG.STATUS_LABELS[stKey] : o.status;
                     var badgeClass = 'status-badge ' + classeCssStatus(stKey);
                     var tr = document.createElement('tr');
+                    if (filtroAtivo) tr.className = 'admin-tr-destaque-busca';
                     tr.innerHTML =
                         '<td>' + escapeCell(nomeCliente) + '</td>' +
                         '<td>' + escapeCell(dataEvt || '—') + '</td>' +
@@ -147,6 +296,19 @@
                 d.textContent = String(s);
                 return d.innerHTML;
             }
+
+            function limparBusca() {
+                var input = document.getElementById('filtro-orcamentos');
+                var sel = document.getElementById('filtro-status');
+                if (input) input.value = '';
+                if (sel) sel.value = '';
+                renderTabela();
+                if (input) input.focus();
+            }
+
+            document.getElementById('filtro-orcamentos').addEventListener('input', renderTabela);
+            document.getElementById('filtro-status').addEventListener('change', renderTabela);
+            document.getElementById('btn-limpar-busca').addEventListener('click', limparBusca);
 
             document.getElementById('tbody-orcamentos').addEventListener('click', function (ev) {
                 var btn = ev.target.closest('button[data-acao-excluir-orc]');
