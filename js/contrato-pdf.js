@@ -218,8 +218,12 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
     doc.setTextColor(30, 25, 22);
     if (orcamento.itens && orcamento.itens.length) {
         orcamento.itens.forEach(function (it) {
-            var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
-            var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
+            var sub = typeof subtotalLinhaItemOrcamento === "function"
+                ? subtotalLinhaItemOrcamento(it)
+                : (function () {
+                    var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
+                    return (Number(pu) || 0) * (Number(it.quantidade) || 0);
+                })();
             var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
                 ? formatarQtdNomeItemOrcamento(it)
                 : (it.quantidade || 0) + " × " + (it.nome || "");

@@ -2,13 +2,16 @@
  * Detalhe do orçamento (admin): desconto, degustação, pagamento, WhatsApp, PDF proposta
  */
 (function () {
-    /** Soma valor original a partir dos itens (mantém coerência com PDF/WhatsApp). */
+    /** Soma valor original a partir dos itens (quantidade × preço unitário). */
     function somaSubtotalItens(itens) {
+        if (typeof somaSubtotalItensOrcamento === "function") {
+            return somaSubtotalItensOrcamento(itens);
+        }
         var t = 0;
         (itens || []).forEach(function (it) {
-            var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
-            var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
-            t += Number(sub) || 0;
+            t += typeof subtotalLinhaItemOrcamento === "function"
+                ? subtotalLinhaItemOrcamento(it)
+                : (Number(it.preco_unitario != null ? it.preco_unitario : it.preco) || 0) * (Number(it.quantidade) || 0);
         });
         return Math.round(t * 100) / 100;
     }
@@ -264,8 +267,9 @@
         }
         msg += "\nITENS:\n";
         (o.itens || []).forEach(function (it) {
-            var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
-            var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
+            var sub = typeof subtotalLinhaItemOrcamento === "function"
+                ? subtotalLinhaItemOrcamento(it)
+                : (Number(it.preco_unitario != null ? it.preco_unitario : it.preco) || 0) * (Number(it.quantidade) || 0);
             var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
                 ? formatarQtdNomeItemOrcamento(it)
                 : (it.quantidade || 0) + "x " + (it.nome || "");
@@ -385,8 +389,12 @@
         (o.itens || []).forEach(function (it, idx) {
             var li = document.createElement("li");
             li.className = "admin-lista-item-linha" + (it.extra_pedido_admin === true ? " admin-lista-item-linha--extra" : "");
-            var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
-            var sub = it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
+            var pu = typeof precoUnitarioItemOrcamento === "function"
+                ? precoUnitarioItemOrcamento(it)
+                : (it.preco_unitario != null ? it.preco_unitario : it.preco);
+            var sub = typeof subtotalLinhaItemOrcamento === "function"
+                ? subtotalLinhaItemOrcamento(it)
+                : (Number(pu) || 0) * (Number(it.quantidade) || 0);
             var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
                 ? formatarQtdNomeItemOrcamento(it)
                 : it.quantidade + " × " + (it.nome || "");
@@ -601,7 +609,6 @@
         var vo = somaSubtotalItens(lista);
         orcamentoAtual.itens = lista;
         orcamentoAtual.valor_original = vo;
-        orcamentoAtual.total = vo;
         var patch = patchComumExtra();
         var atualizado = atualizarOrcamentoParcial(orcamentoAtual.id, patch);
         if (!atualizado) {
@@ -706,7 +713,7 @@
             valor_desconto: vDesc,
             valor_final: vf,
             valor_original: vo,
-            total: vo,
+            total: vf,
             desconto_degustacao: opcionalMoedaPatch("desconto-degustacao"),
             desconto_cerimonialista: opcionalMoedaPatch("desconto-cerimonialista"),
             taxa_entrega: opcionalMoedaPatch("taxa-entrega"),
@@ -932,7 +939,7 @@
             extra.observacoes_internas = observacoesInternasAtual();
             extra.itens = itensContrato;
             extra.valor_original = voSnap;
-            extra.total = voSnap;
+            extra.total = vfSnap;
             extra.valor_final = vfSnap;
             extra.valor_desconto = vDescSnap;
 
@@ -942,7 +949,7 @@
                 valor_final: vfSnap,
                 valor_desconto: vDescSnap,
                 valor_original: voSnap,
-                total: voSnap,
+                total: vfSnap,
                 itens: itensContrato,
                 contrato: {
                     valor_final: vfSnap,

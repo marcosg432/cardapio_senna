@@ -38,14 +38,15 @@ function formaPagamentoOrc(o) {
 
 function somaSubtotalItensDoOrcamento(o) {
     if (!o || !Array.isArray(o.itens)) return 0;
+    if (typeof somaSubtotalItensOrcamento === "function") {
+        return somaSubtotalItensOrcamento(o.itens);
+    }
     var t = 0;
     for (var i = 0; i < o.itens.length; i++) {
         var it = o.itens[i];
         if (!it) continue;
         var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
-        var sub =
-            it.subtotal != null ? it.subtotal : (Number(pu) || 0) * (Number(it.quantidade) || 0);
-        t += Number(sub) || 0;
+        t += (Number(pu) || 0) * (Number(it.quantidade) || 0);
     }
     return Math.round(t * 100) / 100;
 }

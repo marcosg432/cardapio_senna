@@ -25,13 +25,82 @@ function descontoEquivalenteEmReais(valorOriginal, descontoTipo, descontoValor) 
 }
 
 /**
+ * Converte preço/quantidade monetária (número, "4.5", "4,50", "1.500,00") para reais com 2 casas.
+ * Vazio ou inválido → 0. Nunca negativo.
+ */
+function numeroMonetarioItemOrcamento(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number") {
+        if (!isFinite(v) || v < 0) return 0;
+        return Math.round(v * 100) / 100;
+    }
+    var s = String(v).trim().replace(/\s/g, "");
+    if (!s) return 0;
+    var temVirgula = s.indexOf(",") >= 0;
+    var temPonto = s.indexOf(".") >= 0;
+    if (temVirgula && temPonto) {
+        if (s.lastIndexOf(",") > s.lastIndexOf(".")) {
+            s = s.replace(/\./g, "").replace(",", ".");
+        } else {
+            s = s.replace(/,/g, "");
+        }
+    } else if (temVirgula) {
+        s = s.replace(",", ".");
+    }
+    var n = Number(s);
+    if (!isFinite(n) || n < 0) return 0;
+    return Math.round(n * 100) / 100;
+}
+
+/**
  * Valor numérico opcional (vazio → 0), nunca negativo.
  */
 function valorMonetarioOrcamentoOpcional(v) {
-    if (v == null || v === "") return 0;
-    var n = Number(String(v).replace(",", "."));
-    if (isNaN(n) || n < 0) return 0;
-    return Math.round(n * 100) / 100;
+    return numeroMonetarioItemOrcamento(v);
+}
+
+/**
+ * Quantidade inteira da linha (mínimo 0).
+ */
+function quantidadeItemOrcamento(it) {
+    var n = parseInt(String(it && it.quantidade != null ? it.quantidade : 0), 10);
+    if (!isFinite(n) || n < 0) return 0;
+    return n;
+}
+
+/**
+ * Preço unitário da linha (preco_unitario ou preco).
+ */
+function precoUnitarioItemOrcamento(it) {
+    if (!it) return 0;
+    var pu = it.preco_unitario != null ? it.preco_unitario : it.preco;
+    return numeroMonetarioItemOrcamento(pu);
+}
+
+/**
+ * Subtotal da linha = quantidade × preço unitário.
+ * Sempre recalcula; não usa `subtotal` gravado (pode estar desatualizado).
+ */
+function subtotalLinhaItemOrcamento(it) {
+    if (!it) return 0;
+    var q = quantidadeItemOrcamento(it);
+    var pu = precoUnitarioItemOrcamento(it);
+    if (q > 0 && pu > 0) {
+        return Math.round(q * pu * 100) / 100;
+    }
+    return numeroMonetarioItemOrcamento(it.subtotal);
+}
+
+/**
+ * Soma dos produtos (única fonte de verdade do subtotal).
+ */
+function somaSubtotalItensOrcamento(itens) {
+    var t = 0;
+    var lista = itens || [];
+    for (var i = 0; i < lista.length; i++) {
+        t += subtotalLinhaItemOrcamento(lista[i]);
+    }
+    return Math.round(t * 100) / 100;
 }
 
 /**
@@ -77,7 +146,7 @@ function rotuloUnidadeVenda(unidade, qtd) {
  * Sem unidade: "50 × Camafeu". Com unidade: "1 pacote × Pacote simples".
  */
 function formatarQtdNomeItemOrcamento(it) {
-    var q = it && it.quantidade != null ? it.quantidade : 0;
+    var q = quantidadeItemOrcamento(it);
     var nome = (it && it.nome) || "";
     var u = it && it.unidade ? String(it.unidade).trim() : "";
     if (!u) return q + " × " + nome;

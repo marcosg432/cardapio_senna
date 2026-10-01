@@ -277,7 +277,9 @@ function atualizarCarrinho() {
     carrinho.forEach((item, index) => {
         const min = resolverQtdMin(item.qtdMin);
         const q = parseInt(String(item.quantidade), 10);
-        const subtotal = item.preco * q;
+        const subtotal = typeof subtotalLinhaItemOrcamento === "function"
+            ? subtotalLinhaItemOrcamento(item)
+            : item.preco * q;
         const noLimiteMin = q <= min;
         const unidadeRotulo = rotuloUnidadeCarrinho(item.unidade, q);
         const unidadePreco = rotuloUnidadeCarrinho(item.unidade, 1);
@@ -316,7 +318,14 @@ function atualizarCarrinho() {
  * @returns {number}
  */
 function calcularTotal() {
-    return carrinho.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
+    if (typeof somaSubtotalItensOrcamento === "function") {
+        return somaSubtotalItensOrcamento(carrinho);
+    }
+    return carrinho.reduce((acc, item) => {
+        var pu = Number(item.preco) || 0;
+        var q = parseInt(String(item.quantidade), 10) || 0;
+        return acc + pu * q;
+    }, 0);
 }
 
 /**

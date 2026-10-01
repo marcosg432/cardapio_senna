@@ -35,13 +35,15 @@ function validarQuantidadesCarrinho() {
 
 function montarItensOrcamentoDoCarrinho() {
     return carrinho.map(function (item) {
-        var subtotal = Math.round(item.preco * item.quantidade * 100) / 100;
+        var subtotal = typeof subtotalLinhaItemOrcamento === "function"
+            ? subtotalLinhaItemOrcamento(item)
+            : Math.round(item.preco * item.quantidade * 100) / 100;
         var min = qtdMinDoItemCarrinho(item);
         return {
             nome: item.nome,
-            quantidade: item.quantidade,
-            preco: item.preco,
-            preco_unitario: item.preco,
+            quantidade: typeof quantidadeItemOrcamento === "function" ? quantidadeItemOrcamento(item) : item.quantidade,
+            preco: typeof precoUnitarioItemOrcamento === "function" ? precoUnitarioItemOrcamento(item) : item.preco,
+            preco_unitario: typeof precoUnitarioItemOrcamento === "function" ? precoUnitarioItemOrcamento(item) : item.preco,
             subtotal: subtotal,
             qtd_min: min,
             unidade: item.unidade ? String(item.unidade).trim() : ""
@@ -92,11 +94,8 @@ function montarMensagemOrcamento(orcId) {
     var entregaSuporte = valorEntregaSuporteOrcamento();
     var dataPagEntrada = campoTrimOrcamento("data-pagamento-entrada");
 
-    var valorOriginal = typeof calcularTotal === "function" ? calcularTotal() : 0;
     var taxaEntrega = typeof taxaEntregaSuporteSelecionada === "function" ? taxaEntregaSuporteSelecionada() : 0;
-    var valorFinalEstimado = typeof calcularTotalComEntregaSuporte === "function"
-        ? calcularTotalComEntregaSuporte()
-        : Math.round((valorOriginal + taxaEntrega) * 100) / 100;
+    var somaProdutos = 0;
     var minPadrao = 50;
     if (typeof getPedidoMinimoPadrao === 'function') {
         minPadrao = getPedidoMinimoPadrao();
@@ -110,13 +109,18 @@ function montarMensagemOrcamento(orcId) {
     msg += "Pedido mínimo (padrão): " + minPadrao + " un. por produto e sabor.\n\n";
     msg += "ITENS (pré-orçamento):\n";
     carrinho.forEach(function (item) {
-        var subtotal = item.preco * item.quantidade;
+        var subtotal = typeof subtotalLinhaItemOrcamento === "function"
+            ? subtotalLinhaItemOrcamento(item)
+            : Math.round((Number(item.preco) || 0) * (Number(item.quantidade) || 0) * 100) / 100;
+        somaProdutos += subtotal;
         var linhaQtd = typeof formatarQtdNomeItemOrcamento === "function"
             ? formatarQtdNomeItemOrcamento(item)
             : item.quantidade + "x " + item.nome;
         msg += linhaQtd + " - R$ " + formatarPreco(subtotal) + "\n";
     });
-    msg += "\nSubtotal produtos: R$ " + formatarPreco(valorOriginal) + "\n";
+    somaProdutos = Math.round(somaProdutos * 100) / 100;
+    var valorFinalEstimado = Math.round((somaProdutos + (Number(taxaEntrega) || 0)) * 100) / 100;
+    msg += "\nSubtotal produtos: R$ " + formatarPreco(somaProdutos) + "\n";
     if (taxaEntrega > 0) {
         msg += "Entrega/suporte (a partir de): R$ " + formatarPreco(taxaEntrega) + "\n";
     } else if (entregaSuporte) {
@@ -209,7 +213,10 @@ function gerarOrcamento() {
 
     var entregaTexto = tipo === "Entrega" ? "Entrega — " + (endereco || "") : (tipo || "");
 
-    var valorOriginal = Math.round(calcularTotal() * 100) / 100;
+    var itens = montarItensOrcamentoDoCarrinho();
+    var valorOriginal = typeof somaSubtotalItensOrcamento === "function"
+        ? somaSubtotalItensOrcamento(itens)
+        : Math.round(calcularTotal() * 100) / 100;
     var taxaEntrega = typeof taxaEntregaSuporteSelecionada === "function"
         ? taxaEntregaSuporteSelecionada()
         : 0;
@@ -217,7 +224,6 @@ function gerarOrcamento() {
         ? calcularValorFinalOrcamento(valorOriginal, null, null, null, null, taxaEntrega)
         : Math.round((valorOriginal + taxaEntrega) * 100) / 100;
     var id = Date.now();
-    var itens = montarItensOrcamentoDoCarrinho();
 
     var statusNovo = (CONFIG && CONFIG.STATUS_ORCAMENTO && CONFIG.STATUS_ORCAMENTO.NOVO) || "novo_orcamento";
     var agora = new Date().toISOString();
@@ -264,7 +270,7 @@ function gerarOrcamento() {
         endereco: tipo === "Entrega" ? endereco : null,
         forma_pagamento_ref: pagamento || null,
         pagamento: pagamento || "",
-        total: valorOriginal,
+        total: valorFinal,
         cliente_cpf: cpf ? cpf : null,
         cliente_rg: rg ? rg : null,
         rg: rg ? rg : null,

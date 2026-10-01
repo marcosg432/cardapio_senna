@@ -267,7 +267,9 @@
                 filtrada.forEach(function (o) {
                     var nomeCliente = o.cliente != null && o.cliente !== '' ? o.cliente : o.nome_cliente;
                     var dataEvt = eventoDataOrc(o);
-                    var vOrig = valorOriginalOrcCompat(o);
+                    var vOrig = typeof valorOriginalOrcamentoComItens === "function"
+                        ? valorOriginalOrcamentoComItens(o)
+                        : valorOriginalOrcCompat(o);
                     var vFin = valorFinalOrc(o);
                     var dr = descontoEquivalenteEmReais(vOrig, o.desconto_tipo, o.desconto_valor);
                     var stKey = statusNormalizado(o);
