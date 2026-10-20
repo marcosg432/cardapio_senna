@@ -23,13 +23,12 @@
     <div id="admin-main" hidden>
         <header class="admin-bar">
             <span id="admin-titulo-empresa"><strong>Orçamentos</strong></span>
-            <span>
-                <a href="dashboard/index.html">Dashboard</a>
-                <span style="opacity:0.6"> · </span>
-                <a href="../index.html">Site</a>
-                <span style="opacity:0.6"> · </span>
-                <button type="button" class="admin-btn admin-btn-sec" id="btn-sair">Sair</button>
-            </span>
+            <nav class="admin-bar-nav" aria-label="Navegação do painel">
+                <a class="admin-bar-btn" href="dashboard/index.html">Dashboard</a>
+                <a class="admin-bar-btn admin-bar-btn--atual" href="index.html" aria-current="page">Lista</a>
+                <a class="admin-bar-btn" href="../index.html">Site</a>
+                <button type="button" class="admin-bar-btn admin-bar-btn--sair" id="btn-sair">Sair</button>
+            </nav>
         </header>
         <div class="admin-wrap">
             <div id="admin-storage-aviso" class="admin-card" style="display:none;background:#fff8e6;border:1px solid #e6c200;font-size:0.88rem;line-height:1.5;margin-bottom:1rem"></div>

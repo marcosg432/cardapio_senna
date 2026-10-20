@@ -27,6 +27,52 @@
     text-decoration: underline;
 }
 
+.admin-bar-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.admin-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.45rem 1rem;
+    background: #f5f0ea;
+    color: #5c4033 !important;
+    border-radius: 8px;
+    text-decoration: none !important;
+    font-size: 0.92rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.2;
+    box-sizing: border-box;
+}
+
+.admin-bar-btn:hover {
+    background: #fff;
+    text-decoration: none;
+}
+
+.admin-bar-btn--atual {
+    background: #fff;
+    box-shadow: inset 0 0 0 2px #c4b09a;
+}
+
+.admin-bar-btn--sair {
+    background: transparent;
+    color: #f5f0ea !important;
+    box-shadow: inset 0 0 0 1.5px rgba(245, 240, 234, 0.85);
+}
+
+.admin-bar-btn--sair:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
 .admin-wrap {
     max-width: 1100px;
     margin: 0 auto;

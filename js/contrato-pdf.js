@@ -323,7 +323,10 @@ function carregarImagemParaPdf(url) {
 }
 
 /**
- * Bloco de assinaturas no final do contrato (contratante em branco + imagem da contratada).
+ * Bloco de assinaturas no final do contrato.
+ * O contratante fica à esquerda, com área em branco para assinar à mão.
+ * A assinatura da contratada fica à direita e não ocupa esse espaço.
+ * Se a página atual não couber o bloco, ele vai para a página seguinte.
  */
 function desenharAssinaturasContratoPdf(ctx) {
     var doc = ctx.doc;
@@ -332,27 +335,61 @@ function desenharAssinaturasContratoPdf(ctx) {
     var maxW = ctx.maxW;
     var nomeContratada = ctx.nomeContratada;
     var empresa = ctx.empresa;
+    var nomeCliente = ctx.nomeCliente || "";
     var assinatura = ctx.assinatura;
 
-    function linha(texto, dy) {
-        dy = dy || 5.2;
-        doc.setFontSize(9);
-        var lines = doc.splitTextToSize(String(texto || ""), maxW);
-        doc.text(lines, margem, y);
-        y += lines.length * dy;
-        if (y > 278) {
-            doc.addPage();
-            y = 16;
+    var gap = 6;
+    var colW = (maxW - gap) / 2;
+    var altCaixa = 46;
+    var altBloco = 10 + altCaixa;
+    var limite = 280;
+
+    if (y + 6 + altBloco > limite) {
+        doc.addPage();
+        y = 22;
+    } else {
+        y += 8;
+    }
+
+    doc.setFontSize(9.5);
+    doc.setFont(undefined, "bold");
+    doc.setTextColor(45, 38, 32);
+    doc.text("ASSINATURAS", margem, y);
+    y += 5;
+
+    var xCliente = margem;
+    var xContratada = margem + colW + gap;
+    var yCaixa = y;
+
+    doc.setDrawColor(95, 78, 68);
+    doc.setLineWidth(0.35);
+    doc.rect(xCliente, yCaixa, colW, altCaixa);
+    doc.rect(xContratada, yCaixa, colW, altCaixa);
+
+    var yLinha = yCaixa + altCaixa - 18;
+    doc.setDrawColor(80, 70, 64);
+    doc.setLineWidth(0.3);
+    doc.line(xCliente + 8, yLinha, xCliente + colW - 8, yLinha);
+    doc.line(xContratada + 8, yLinha, xContratada + colW - 8, yLinha);
+
+    function legenda(x, linhas) {
+        doc.setFont(undefined, "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(45, 38, 32);
+        var yy = yLinha + 5.2;
+        for (var i = 0; i < linhas.length; i++) {
+            if (!linhas[i]) continue;
+            var partes = doc.splitTextToSize(String(linhas[i]), colW - 10);
+            doc.text(partes, x + 5, yy);
+            yy += partes.length * 3.5;
         }
     }
 
-    linha("______________________________________________");
-    linha("Assinatura do(a) CONTRATANTE");
-    y += 2;
+    legenda(xCliente, ["Assinatura do(a) CONTRATANTE", nomeCliente]);
 
-    if (assinatura && assinatura.dataUrl) {
-        var largMax = 72;
-        var altMax = 18;
+    if (assinatura && assinatura.dataUrl && assinatura.width && assinatura.height) {
+        var largMax = colW - 18;
+        var altMax = Math.max(8, yLinha - yCaixa - 10);
         var ratio = assinatura.width / assinatura.height;
         var largAss = largMax;
         var altAss = largAss / ratio;
@@ -360,17 +397,19 @@ function desenharAssinaturasContratoPdf(ctx) {
             altAss = altMax;
             largAss = altAss * ratio;
         }
-        if (y + altAss + 6 > 278) {
-            doc.addPage();
-            y = 16;
-        }
-        doc.addImage(assinatura.dataUrl, "PNG", margem, y, largAss, altAss);
-        y += altAss + 3;
-    } else {
-        linha("______________________________________________");
+        var xImg = xContratada + (colW - largAss) / 2;
+        var yImg = yCaixa + 4;
+        doc.addImage(assinatura.dataUrl, "PNG", xImg, yImg, largAss, altAss);
     }
-    linha("Assinatura da CONTRATADA — " + nomeContratada + " / " + empresa);
-    return y;
+
+    var nomeLinha = nomeContratada || "";
+    if (empresa && empresa !== nomeContratada) {
+        nomeLinha = nomeLinha ? nomeLinha + " / " + empresa : empresa;
+    }
+    legenda(xContratada, ["Assinatura da CONTRATADA", nomeLinha]);
+
+    doc.setTextColor(0, 0, 0);
+    return yCaixa + altCaixa + 4;
 }
 
 function gerarContratoPDF(orcamento) {
@@ -524,6 +563,7 @@ function gerarContratoPDF(orcamento) {
             maxW: maxW,
             nomeContratada: nomeContratada,
             empresa: empresa,
+            nomeCliente: nomeCliente,
             assinatura: assinatura
         });
         doc.save("contrato-" + (orcamento.id || "documento") + ".pdf");
