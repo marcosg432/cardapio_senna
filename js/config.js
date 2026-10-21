@@ -18,8 +18,6 @@ const CONFIG = {
      * Valor explícito no card (ex.: pacotes) é respeitado, inclusive abaixo deste padrão.
      */
     pedidoMinimoUnidades: 50,
-    /** Senha da área administrativa (troque em produção) */
-    senhaAdmin: "Candyli280426",
     /** Chaves de status (espelho do banco / fluxo) */
     STATUS_ORCAMENTO: {
         NOVO: "novo_orcamento",

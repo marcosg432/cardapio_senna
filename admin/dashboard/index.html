@@ -137,7 +137,15 @@
                 if (adminEstaAutenticado()) render();
             });
 
-            document.addEventListener("DOMContentLoaded", render);
+            document.addEventListener("DOMContentLoaded", function () {
+                adminCarregarSessao(function (ok) {
+                    if (!ok) {
+                        window.location.href = "/admin/";
+                        return;
+                    }
+                    render();
+                });
+            });
         })();
     </script>
 </body>

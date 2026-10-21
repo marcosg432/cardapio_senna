@@ -4,6 +4,7 @@
 const orcamentosRepo = require('../database/repositories/orcamentosRepository');
 const categoriasRepo = require('../database/repositories/categoriasRepository');
 const produtosRepo = require('../database/repositories/produtosRepository');
+const auth = require('./auth');
 
 function readJsonBody(req, callback) {
   const chunks = [];
@@ -210,16 +211,43 @@ function crudGeneric(req, res, pathname, repo, apiDbReady, namePt) {
   sendJson(res, 405, { error: 'Método não permitido' });
 }
 
+function mutacao(req) {
+  return req.method !== 'GET' && req.method !== 'HEAD';
+}
+
+function bloquearSeOrigemEstranha(req, res) {
+  if (auth.origemConfiavel(req)) return false;
+  sendJson(res, 403, { erro: 'Não foi possível concluir a operação.' });
+  return true;
+}
+
 function handleApi(req, res, pathname, apiDbReady) {
+  if (pathname.startsWith('/api/auth/')) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    return auth.handleAuth(req, res, pathname);
+  }
+
   if (pathname.startsWith('/api/orcamentos')) {
+    const colecao = pathname === '/api/orcamentos' || pathname === '/api/orcamentos/';
+    const envioPublico = colecao && req.method === 'POST';
+    if (envioPublico) {
+      if (bloquearSeOrigemEstranha(req, res)) return;
+      return handleOrcamentos(req, res, pathname, apiDbReady);
+    }
+    if (!auth.exigirAdmin(req, res, { csrf: mutacao(req) })) return;
     return handleOrcamentos(req, res, pathname, apiDbReady);
   }
-  if (pathname.startsWith('/api/categorias')) {
-    return crudGeneric(req, res, pathname, categoriasRepo, apiDbReady, 'Categoria');
+
+  if (pathname.startsWith('/api/categorias') || pathname.startsWith('/api/produtos')) {
+    const repo = pathname.startsWith('/api/categorias') ? categoriasRepo : produtosRepo;
+    const nome = pathname.startsWith('/api/categorias') ? 'Categoria' : 'Produto';
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return crudGeneric(req, res, pathname, repo, apiDbReady, nome);
+    }
+    if (!auth.exigirAdmin(req, res, { csrf: true })) return;
+    return crudGeneric(req, res, pathname, repo, apiDbReady, nome);
   }
-  if (pathname.startsWith('/api/produtos')) {
-    return crudGeneric(req, res, pathname, produtosRepo, apiDbReady, 'Produto');
-  }
+
   sendJson(res, 404, { error: 'Rota desconhecida' });
 }
 

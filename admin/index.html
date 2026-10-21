@@ -16,7 +16,7 @@
         <label for="admin-senha">Senha</label>
         <input type="password" id="admin-senha" placeholder="Senha" autocomplete="current-password">
         <button type="button" class="admin-btn" id="btn-entrar" style="width:100%">Entrar</button>
-        <p id="login-erro" style="color:#c0392b;display:none;margin-top:0.75rem">Senha incorreta.</p>
+        <p id="login-erro" style="color:#c0392b;display:none;margin-top:0.75rem">Não foi possível entrar.</p>
         <p style="margin-top:1rem"><a href="../index.html">← Voltar ao site</a></p>
     </div>
 
@@ -326,25 +326,36 @@
             });
 
             document.getElementById('btn-entrar').addEventListener('click', function () {
+                var botao = document.getElementById('btn-entrar');
                 var input = document.getElementById('admin-senha');
                 err.style.display = 'none';
-                if (adminLogin(input.value)) {
-                    input.value = '';
-                    mostrarPainel();
-                } else {
-                    err.style.display = 'block';
-                }
+                botao.disabled = true;
+                adminLogin(input.value, function (ok, msg) {
+                    botao.disabled = false;
+                    if (ok) {
+                        input.value = '';
+                        mostrarPainel();
+                    } else {
+                        err.textContent = msg || 'Não foi possível entrar.';
+                        err.style.display = 'block';
+                    }
+                });
+            });
+
+            document.getElementById('admin-senha').addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') document.getElementById('btn-entrar').click();
             });
 
             document.getElementById('btn-sair').addEventListener('click', function () {
-                adminLogout();
-                main.hidden = true;
-                loginBox.hidden = false;
+                adminLogout(function () {
+                    main.hidden = true;
+                    loginBox.hidden = false;
+                });
             });
 
-            if (adminEstaAutenticado()) {
-                mostrarPainel();
-            }
+            adminCarregarSessao(function (ok) {
+                if (ok) mostrarPainel();
+            });
         })();
     </script>
 </body>

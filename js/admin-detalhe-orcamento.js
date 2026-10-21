@@ -1119,5 +1119,17 @@
         });
     }
 
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", function () {
+        if (typeof adminCarregarSessao !== "function") {
+            window.location.href = "index.html";
+            return;
+        }
+        adminCarregarSessao(function (ok) {
+            if (!ok) {
+                window.location.href = "index.html";
+                return;
+            }
+            init();
+        });
+    });
 })();

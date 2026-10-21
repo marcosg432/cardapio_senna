@@ -7,9 +7,13 @@
     "start": "node server.js",
     "open": "node -e \"var p=String(Number(process.env.PORT)||3003);require('child_process').execSync(process.platform==='win32'?'cmd /c start \\\"\\\" \\\"http://localhost:'+p+'/\\\"':'open http://localhost:'+p+'/',{stdio:'inherit'})\"",
     "open:all": "node open-both.js",
-    "build": "echo 'Projeto estático - sem build'"
+    "build": "echo 'Projeto estático - sem build'",
+    "test:auth": "node scripts/test-auth.js"
   },
   "engines": {
     "node": ">=22.13.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3"
   }
 }

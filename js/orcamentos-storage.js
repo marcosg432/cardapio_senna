@@ -115,6 +115,9 @@ function apiRequestSync(method, pathStr, bodyObj) {
         var xhr = new XMLHttpRequest();
         xhr.open(method, pathStr, false);
         xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+        if (typeof adminCsrfToken === "string" && adminCsrfToken && method !== "GET" && method !== "HEAD") {
+            xhr.setRequestHeader("X-CSRF-Token", adminCsrfToken);
+        }
         if (bodyObj != null) {
             xhr.send(JSON.stringify(bodyObj));
         } else {

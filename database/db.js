@@ -8,7 +8,9 @@ const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 
 const DB_DIR = __dirname;
-const DB_PATH = path.join(DB_DIR, 'database.sqlite');
+const DB_PATH = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.join(DB_DIR, 'database.sqlite');
 const MIGRATIONS_DIR = path.join(DB_DIR, 'migrations');
 
 function runMigrations(db) {
