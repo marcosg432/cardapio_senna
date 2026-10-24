@@ -1,0 +1,382 @@
+/* Painel de gestão — shell visual independente do admin de orçamentos */
+
+.gestao-body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Manrope", system-ui, sans-serif;
+    color: #1c2430;
+    background: #f3f0eb;
+}
+
+.gestao-bloqueio {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    color: #5c6b78;
+    font-size: 0.95rem;
+}
+
+.gestao-bloqueio[hidden],
+.gestao-app[hidden] {
+    display: none !important;
+}
+
+.gestao-app {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+}
+
+.gestao-sidebar {
+    background: #121f2a;
+    color: #d5dee6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 1.25rem 0.9rem 1rem;
+}
+
+.gestao-marca {
+    padding: 0.35rem 0.75rem 1.1rem;
+    border-bottom: 1px solid rgba(196, 165, 175, 0.18);
+    margin-bottom: 0.9rem;
+}
+
+.gestao-marca-nome {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 500;
+    font-size: 1.25rem;
+    color: #faf8f6;
+    letter-spacing: 0.01em;
+}
+
+.gestao-marca-sub {
+    margin: 0.2rem 0 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #c4a5ad;
+}
+
+.gestao-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    flex: 1;
+}
+
+.gestao-nav a {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 44px;
+    padding: 0.45rem 0.75rem;
+    border-radius: 10px;
+    color: #d5dee6;
+    text-decoration: none;
+    font-size: 0.94rem;
+    font-weight: 500;
+}
+
+.gestao-nav a svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+}
+
+.gestao-nav a svg path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.gestao-nav a:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.gestao-nav a[aria-current="page"] {
+    background: rgba(196, 165, 175, 0.16);
+    color: #faf8f6;
+    box-shadow: inset 0 0 0 1px rgba(196, 165, 175, 0.35);
+}
+
+.gestao-nav-grupo {
+    margin: 1rem 0.75rem 0.35rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7d8f9c;
+}
+
+.gestao-sidebar-rodape {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gestao-sidebar-rodape a,
+.gestao-sidebar-rodape button {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    background: transparent;
+    border: 0;
+    color: #a8b8c4;
+    text-decoration: none;
+    font: inherit;
+    font-size: 0.88rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.gestao-sidebar-rodape a:hover,
+.gestao-sidebar-rodape button:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.gestao-coluna {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.gestao-topo {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.35rem 1.5rem 0;
+}
+
+.gestao-menu {
+    display: none;
+    min-height: 44px;
+    min-width: 44px;
+    border-radius: 10px;
+    border: 1px solid rgba(18, 31, 42, 0.12);
+    background: #fff;
+    color: #121f2a;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gestao-kicker {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8f7a5e;
+}
+
+.gestao-topo h1 {
+    margin: 0.15rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(1.6rem, 2vw, 2rem);
+    letter-spacing: -0.02em;
+}
+
+.gestao-conteudo {
+    padding: 1rem 1.5rem 2.5rem;
+}
+
+.gestao-intro {
+    margin: 0 0 1.25rem;
+    max-width: 42rem;
+    color: #5c6b78;
+    line-height: 1.55;
+}
+
+.gestao-grade {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.gestao-grade--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gestao-grade--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gestao-card,
+.gestao-painel {
+    background: #fff;
+    border: 1px solid rgba(18, 31, 42, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px -24px rgba(18, 31, 42, 0.45);
+}
+
+.gestao-card {
+    padding: 1rem 1.05rem 1.05rem;
+}
+
+.gestao-card h2,
+.gestao-painel h2 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 650;
+}
+
+.gestao-card p,
+.gestao-painel p {
+    margin: 0.35rem 0 0;
+    color: #5c6b78;
+    line-height: 1.5;
+    font-size: 0.92rem;
+}
+
+.gestao-indicador {
+    margin-top: 0.85rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.65rem;
+    color: #121f2a;
+    letter-spacing: -0.03em;
+}
+
+.gestao-secoes {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+}
+
+.gestao-painel {
+    padding: 1.1rem 1.15rem 1.2rem;
+}
+
+.gestao-painel header p {
+    margin-top: 0.25rem;
+}
+
+.gestao-vazio {
+    margin-top: 0.9rem;
+    padding: 1.15rem 1rem;
+    border-radius: 12px;
+    border: 1px dashed rgba(18, 31, 42, 0.16);
+    background: #faf8f6;
+    color: #5c6b78;
+    text-align: center;
+}
+
+.gestao-tabela-reserva {
+    margin-top: 0.9rem;
+    overflow: auto;
+    border-radius: 12px;
+    border: 1px solid rgba(18, 31, 42, 0.08);
+}
+
+.gestao-tabela-reserva table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.gestao-tabela-reserva th {
+    text-align: left;
+    font-weight: 650;
+    color: #5c6b78;
+    background: #faf8f6;
+    padding: 0.7rem 0.85rem;
+}
+
+.gestao-tabela-reserva td {
+    padding: 0.95rem 0.85rem;
+    color: #5c6b78;
+}
+
+.gestao-calendario {
+    margin-top: 0.9rem;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.4rem;
+}
+
+.gestao-calendario span {
+    display: grid;
+    place-items: center;
+    min-height: 42px;
+    border-radius: 10px;
+    background: #faf8f6;
+    color: #7d8f9c;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.gestao-nota {
+    margin-top: 1.25rem;
+    font-size: 0.82rem;
+    color: #7d8f9c;
+}
+
+.gestao-scrim {
+    display: none;
+}
+
+@media (max-width: 1100px) {
+    .gestao-grade,
+    .gestao-grade--3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    .gestao-app {
+        grid-template-columns: 1fr;
+    }
+
+    .gestao-menu {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .gestao-sidebar {
+        position: fixed;
+        z-index: 30;
+        width: min(280px, 86vw);
+        transform: translateX(-105%);
+        transition: transform 0.2s ease;
+        box-shadow: 16px 0 40px rgba(0, 0, 0, 0.18);
+    }
+
+    .gestao-body.gestao-nav-aberta .gestao-sidebar {
+        transform: translateX(0);
+    }
+
+    .gestao-body.gestao-nav-aberta .gestao-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: rgba(18, 31, 42, 0.4);
+    }
+
+    .gestao-grade,
+    .gestao-grade--2,
+    .gestao-grade--3 {
+        grid-template-columns: 1fr;
+    }
+
+    .gestao-topo,
+    .gestao-conteudo {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

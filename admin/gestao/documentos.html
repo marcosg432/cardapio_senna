@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos | Gestão · Candy Li</title>
+    <link rel="stylesheet" href="../../css/gestao.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="gestao-body" data-gestao-pagina="documentos">
+    <p class="gestao-bloqueio" id="gestao-bloqueio">Verificando acesso…</p>
+    <div class="gestao-scrim" id="gestao-scrim"></div>
+    <div class="gestao-app" id="gestao-app" hidden>
+        <aside class="gestao-sidebar" id="gestao-sidebar"></aside>
+        <div class="gestao-coluna">
+            <header class="gestao-topo">
+                <button type="button" class="gestao-menu" id="gestao-menu" aria-controls="gestao-sidebar" aria-expanded="false">Menu</button>
+                <div>
+                    <p class="gestao-kicker">Arquivos</p>
+                    <h1>Documentos</h1>
+                </div>
+            </header>
+            <main class="gestao-conteudo">
+                <p class="gestao-intro">Espaço para os documentos novos. A proposta de orçamento e o contrato em PDF continuam disponíveis apenas no detalhe de cada orçamento.</p>
+                <section class="gestao-grade gestao-grade--3" aria-label="Tipos de documento">
+                    <article class="gestao-card" data-modulo="pdf-contratos" data-estado="vazio">
+                        <h2>PDFs</h2>
+                        <p>Geração de novos PDFs ainda não disponível nesta etapa.</p>
+                        <p class="gestao-vazio">Nenhum documento carregado</p>
+                    </article>
+                    <article class="gestao-card" data-modulo="demonstrativos" data-estado="vazio">
+                        <h2>Demonstrativos financeiros</h2>
+                        <p>Financeiro ainda não integrado</p>
+                        <p class="gestao-vazio">Nenhum demonstrativo disponível</p>
+                    </article>
+                    <article class="gestao-card" data-modulo="ordens-producao" data-estado="vazio">
+                        <h2>Ordens de produção</h2>
+                        <p>A cozinha ainda não recebe documentos por aqui.</p>
+                        <p class="gestao-vazio">Nenhuma ordem disponível</p>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+    <script src="../../js/config.js"></script>
+    <script src="../../js/admin-common.js"></script>
+    <script src="../../js/gestao/shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financeiro | Gestão · Candy Li</title>
+    <link rel="stylesheet" href="../../css/gestao.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="gestao-body" data-gestao-pagina="financeiro">
+    <p class="gestao-bloqueio" id="gestao-bloqueio">Verificando acesso…</p>
+    <div class="gestao-scrim" id="gestao-scrim"></div>
+    <div class="gestao-app" id="gestao-app" hidden>
+        <aside class="gestao-sidebar" id="gestao-sidebar"></aside>
+        <div class="gestao-coluna">
+            <header class="gestao-topo">
+                <button type="button" class="gestao-menu" id="gestao-menu" aria-controls="gestao-sidebar" aria-expanded="false">Menu</button>
+                <div>
+                    <p class="gestao-kicker">Pagamentos</p>
+                    <h1>Financeiro</h1>
+                </div>
+            </header>
+            <main class="gestao-conteudo">
+                <p class="gestao-intro">Preparação para o controle de pagamentos. Nenhum saldo é calculado nem exibido nesta etapa.</p>
+                <section class="gestao-grade gestao-grade--2" aria-label="Saldos">
+                    <article class="gestao-card" data-modulo="saldo-recebido" data-estado="vazio">
+                        <h2>Saldo recebido</h2>
+                        <p class="gestao-indicador" aria-hidden="true">—</p>
+                        <p>Financeiro ainda não integrado</p>
+                    </article>
+                    <article class="gestao-card" data-modulo="saldo-pendente" data-estado="vazio">
+                        <h2>Saldo pendente</h2>
+                        <p class="gestao-indicador" aria-hidden="true">—</p>
+                        <p>Financeiro ainda não integrado</p>
+                    </article>
+                </section>
+                <section class="gestao-painel" data-modulo="lista-pagamentos" data-estado="vazio" style="margin-top:0.9rem">
+                    <header>
+                        <h2>Contratos</h2>
+                        <p>A listagem de contratos para controle de pagamento entra na próxima etapa.</p>
+                    </header>
+                    <div class="gestao-tabela-reserva">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Contrato</th>
+                                    <th>Evento</th>
+                                    <th>Situação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="3">Nenhum contrato carregado</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="gestao-vazio">Financeiro ainda não integrado</p>
+                </section>
+            </main>
+        </div>
+    </div>
+    <script src="../../js/config.js"></script>
+    <script src="../../js/admin-common.js"></script>
+    <script src="../../js/gestao/shell.js"></script>
+</body>
+</html>
