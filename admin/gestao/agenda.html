@@ -23,35 +23,37 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Área reservada para o calendário de eventos. As datas dos pedidos ainda não são carregadas aqui.</p>
-                <section class="gestao-painel" data-modulo="calendario" data-estado="vazio">
-                    <header>
-                        <h2>Calendário</h2>
-                        <p>A grade abaixo marca o espaço da visualização por data.</p>
+                <p class="gestao-intro">Eventos lidos de <span class="gestao-codigo">data_evento</span> nos orçamentos. Nenhum deles é marcado como confirmado só porque o PDF foi gerado.</p>
+                <section class="gestao-painel" data-modulo="calendario">
+                    <header class="gestao-mes-cabeca">
+                        <div>
+                            <h2 id="agenda-titulo">Calendário</h2>
+                            <p id="agenda-estado">Carregando orçamentos…</p>
+                        </div>
+                        <div class="gestao-mes-nav">
+                            <button type="button" id="agenda-anterior">Mês anterior</button>
+                            <button type="button" id="agenda-proximo">Próximo mês</button>
+                        </div>
                     </header>
-                    <div class="gestao-calendario" aria-hidden="true">
-                        <span>Dom</span>
-                        <span>Seg</span>
-                        <span>Ter</span>
-                        <span>Qua</span>
-                        <span>Qui</span>
-                        <span>Sex</span>
-                        <span>Sáb</span>
-                    </div>
-                    <p class="gestao-vazio">Nenhum evento disponível</p>
+                    <p class="gestao-legenda"><span class="gestao-evento gestao-evento--nao-confirmado"><span>Orçamento</span></span><span class="gestao-evento gestao-evento--nao-confirmado gestao-evento--pdf"><span>PDF emitido</span><em>PDF</em></span> Os dois permanecem não confirmados.</p>
+                    <div class="gestao-calendario" id="agenda-grade" role="grid" aria-label="Calendário mensal"></div>
                 </section>
-                <section class="gestao-painel" data-modulo="eventos-por-data" data-estado="vazio" style="margin-top:0.9rem">
+                <section class="gestao-painel" data-modulo="eventos-por-data" style="margin-top:0.9rem">
                     <header>
-                        <h2>Eventos por data</h2>
-                        <p>A lista do dia selecionado será ligada aos orçamentos com data de evento.</p>
+                        <h2 id="agenda-dia-titulo">Dia</h2>
+                        <p>Clique no dia ou no nome para ver o orçamento original.</p>
                     </header>
-                    <p class="gestao-vazio">Nenhum evento disponível</p>
+                    <div id="agenda-dia-lista"></div>
                 </section>
             </main>
         </div>
     </div>
     <script src="../../js/config.js"></script>
+    <script src="../../js/orcamentos-logic.js"></script>
+    <script src="../../js/orcamentos-compat.js"></script>
     <script src="../../js/admin-common.js"></script>
     <script src="../../js/gestao/shell.js"></script>
+    <script src="../../js/gestao/consulta.js"></script>
+    <script src="../../js/gestao/agenda.js"></script>
 </body>
 </html>

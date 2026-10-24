@@ -23,43 +23,49 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Consulta futura dos contratos gerados a partir dos orçamentos. A geração de PDF que já existe no detalhe do orçamento não foi alterada.</p>
-                <section class="gestao-painel" data-modulo="consulta-contratos" data-estado="vazio">
+                <p class="gestao-intro">Consulta dos orçamentos já cadastrados. O status “Contrato gerado” indica que o PDF foi emitido. Nesta etapa isso não confirma o contrato nem registra pagamento.</p>
+                <section class="gestao-painel" data-modulo="consulta-contratos">
                     <header>
-                        <h2>Contratos existentes</h2>
-                        <p>Espaço da listagem. Nada é lido do banco nesta página.</p>
+                        <h2>Orçamentos</h2>
+                        <p id="gestao-contratos-resumo">Leitura da lista existente.</p>
                     </header>
-                    <div class="gestao-tabela-reserva">
+                    <div class="gestao-filtros">
+                        <label for="gestao-busca">Nome do cliente
+                            <input type="search" id="gestao-busca" placeholder="Buscar pelo nome" autocomplete="off">
+                        </label>
+                        <label for="gestao-status">Status
+                            <select id="gestao-status">
+                                <option value="todos">Todos os status</option>
+                            </select>
+                        </label>
+                    </div>
+                    <p class="gestao-vazio" id="gestao-contratos-estado">Carregando orçamentos…</p>
+                    <div class="gestao-tabela-reserva" id="gestao-contratos-tabela" hidden>
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Número</th>
                                     <th>Cliente</th>
-                                    <th>Evento</th>
-                                    <th>Situação</th>
+                                    <th>Data do evento</th>
+                                    <th>Valor final</th>
+                                    <th>Status</th>
+                                    <th>Identificador</th>
+                                    <th>Orçamento</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="4">Nenhum contrato carregado</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="gestao-contratos-corpo"></tbody>
                         </table>
                     </div>
-                </section>
-                <section class="gestao-painel" data-modulo="integracao-orcamentos" data-estado="vazio" style="margin-top:0.9rem">
-                    <header>
-                        <h2>Integração com orçamentos</h2>
-                        <p>Este bloco será ligado à lista de orçamentos já em uso. Por enquanto, a operação continua na tela atual.</p>
-                    </header>
-                    <p class="gestao-vazio">Nenhum contrato carregado</p>
                     <p class="gestao-nota"><a href="../index.html">Abrir a lista de orçamentos</a></p>
                 </section>
             </main>
         </div>
     </div>
     <script src="../../js/config.js"></script>
+    <script src="../../js/orcamentos-logic.js"></script>
+    <script src="../../js/orcamentos-compat.js"></script>
     <script src="../../js/admin-common.js"></script>
     <script src="../../js/gestao/shell.js"></script>
+    <script src="../../js/gestao/consulta.js"></script>
+    <script src="../../js/gestao/contratos.js"></script>
 </body>
 </html>

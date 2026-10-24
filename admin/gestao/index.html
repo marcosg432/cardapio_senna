@@ -23,58 +23,55 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Área reservada para indicadores da operação. Nesta etapa os módulos ainda não leem contratos, pagamentos ou eventos.</p>
+                <p class="gestao-intro">Resumo lido dos orçamentos existentes. A quantidade de PDFs emitidos não confirma contratos. Valores recebidos e pendentes continuam sem cálculo.</p>
                 <section class="gestao-grade" aria-label="Indicadores">
-                    <article class="gestao-card" data-modulo="contratos-ativos" data-estado="vazio">
-                        <h2>Contratos ativos</h2>
-                        <p class="gestao-indicador" aria-hidden="true">—</p>
-                        <p>Nenhum contrato carregado</p>
+                    <article class="gestao-card" data-modulo="orcamentos-cadastrados">
+                        <h2>Orçamentos cadastrados</h2>
+                        <p class="gestao-indicador" id="indicador-orcamentos" aria-live="polite">…</p>
+                        <p>Total da lista já gravada.</p>
+                    </article>
+                    <article class="gestao-card" data-modulo="pdfs-emitidos">
+                        <h2>PDFs emitidos</h2>
+                        <p class="gestao-indicador" id="indicador-pdfs" aria-live="polite">…</p>
+                        <p>Arquivo gerado. Isso não confirma o contrato.</p>
+                    </article>
+                    <article class="gestao-card" data-modulo="proximos-eventos">
+                        <h2>Próximos eventos</h2>
+                        <p class="gestao-indicador" id="indicador-eventos" aria-live="polite">…</p>
+                        <p>Datas de evento de hoje em diante, ainda sem confirmação.</p>
                     </article>
                     <article class="gestao-card" data-modulo="valores-recebidos" data-estado="vazio">
                         <h2>Valores recebidos</h2>
                         <p class="gestao-indicador" aria-hidden="true">—</p>
                         <p>Financeiro ainda não integrado</p>
                     </article>
-                    <article class="gestao-card" data-modulo="valores-pendentes" data-estado="vazio">
-                        <h2>Valores pendentes</h2>
-                        <p class="gestao-indicador" aria-hidden="true">—</p>
-                        <p>Financeiro ainda não integrado</p>
-                    </article>
-                    <article class="gestao-card" data-modulo="proximos-eventos" data-estado="vazio">
-                        <h2>Próximos eventos</h2>
-                        <p class="gestao-indicador" aria-hidden="true">—</p>
-                        <p>Nenhum evento disponível</p>
-                    </article>
                 </section>
                 <div class="gestao-secoes">
-                    <section class="gestao-painel" data-modulo="lista-contratos-ativos" data-estado="vazio">
+                    <section class="gestao-painel" data-modulo="agenda-resumo">
                         <header>
-                            <h2>Contratos ativos</h2>
-                            <p>Espaço para a lista que virá da integração com orçamentos e contratos.</p>
+                            <h2>Próximos eventos</h2>
+                            <p id="nota-proximos">Nome e data, com atalho para o orçamento original.</p>
                         </header>
-                        <p class="gestao-vazio">Nenhum contrato carregado</p>
+                        <div id="lista-proximos"><p class="gestao-vazio">Carregando orçamentos…</p></div>
                     </section>
                     <section class="gestao-painel" data-modulo="resumo-financeiro" data-estado="vazio">
                         <header>
                             <h2>Recebidos e pendentes</h2>
-                            <p>Espaço para o resumo financeiro, sem valores nesta etapa.</p>
+                            <p>Nenhum saldo é calculado nesta etapa. A entrada prevista do orçamento não entra como pagamento recebido.</p>
                         </header>
                         <p class="gestao-vazio">Financeiro ainda não integrado</p>
                     </section>
-                    <section class="gestao-painel" data-modulo="agenda-resumo" data-estado="vazio">
-                        <header>
-                            <h2>Próximos eventos</h2>
-                            <p>Espaço para a agenda dos eventos confirmados.</p>
-                        </header>
-                        <p class="gestao-vazio">Nenhum evento disponível</p>
-                    </section>
                 </div>
-                <p class="gestao-nota">Os orçamentos e contratos atuais continuam na lista administrativa já existente.</p>
+                <p class="gestao-nota">Os orçamentos continuam sendo editados na lista administrativa já existente.</p>
             </main>
         </div>
     </div>
     <script src="../../js/config.js"></script>
+    <script src="../../js/orcamentos-logic.js"></script>
+    <script src="../../js/orcamentos-compat.js"></script>
     <script src="../../js/admin-common.js"></script>
     <script src="../../js/gestao/shell.js"></script>
+    <script src="../../js/gestao/consulta.js"></script>
+    <script src="../../js/gestao/dashboard.js"></script>
 </body>
 </html>
