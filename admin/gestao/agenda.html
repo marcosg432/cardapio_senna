@@ -23,7 +23,7 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Eventos lidos de <span class="gestao-codigo">data_evento</span> nos orçamentos. Nenhum deles é marcado como confirmado só porque o PDF foi gerado.</p>
+                <p class="gestao-intro">Eventos lidos de <span class="gestao-codigo">data_evento</span>. O preenchimento marca o contrato confirmado pela administradora. A etiqueta PDF continua independente e não confirma o evento.</p>
                 <section class="gestao-painel" data-modulo="calendario">
                     <header class="gestao-mes-cabeca">
                         <div>
@@ -35,7 +35,7 @@
                             <button type="button" id="agenda-proximo">Próximo mês</button>
                         </div>
                     </header>
-                    <p class="gestao-legenda"><span class="gestao-evento gestao-evento--nao-confirmado"><span>Orçamento</span></span><span class="gestao-evento gestao-evento--nao-confirmado gestao-evento--pdf"><span>PDF emitido</span><em>PDF</em></span> Os dois permanecem não confirmados.</p>
+                    <p class="gestao-legenda"><span class="gestao-evento gestao-evento--nao-confirmado"><span>Não confirmado</span></span><span class="gestao-evento gestao-evento--confirmado"><span>Confirmado</span></span><span class="gestao-evento gestao-evento--nao-confirmado gestao-evento--pdf"><span>PDF</span><em>PDF</em></span> O PDF emitido não muda a confirmação.</p>
                     <div class="gestao-calendario" id="agenda-grade" role="grid" aria-label="Calendário mensal"></div>
                 </section>
                 <section class="gestao-painel" data-modulo="eventos-por-data" style="margin-top:0.9rem">

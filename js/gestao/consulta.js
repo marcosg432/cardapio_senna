@@ -1,6 +1,7 @@
 /**
  * Leitura dos orçamentos para o painel de gestão.
- * Não grava, não confirma contrato e não trata entrada como pagamento.
+ * A confirmação fica em gestao_contrato e não altera contrato, contrato_pdf nem pagamentos.
+ * O vínculo financeiro futuro usa o mesmo id: valor contratado, recebimentos, datas, saldo e demonstrativo.
  */
 (function (raiz, fabrica) {
     var api = fabrica();
@@ -85,8 +86,18 @@
         return !!(pdf && typeof pdf === "object" && (pdf.gerado_em || pdf.tipo));
     }
 
-    function eventoConfirmado() {
-        return false;
+    function contratoConfirmado(orcamento) {
+        var gestao = orcamento && orcamento.gestao_contrato;
+        return !!(
+            gestao &&
+            gestao.status === "confirmado" &&
+            typeof gestao.confirmado_em === "string" &&
+            gestao.confirmado_em
+        );
+    }
+
+    function eventoConfirmado(orcamento) {
+        return contratoConfirmado(orcamento);
     }
 
     function hrefOrcamento(id) {
@@ -124,6 +135,10 @@
             var data = dataEvento(orcamento);
             return data && data.iso >= hoje;
         });
+    }
+
+    function proximosConfirmados(lista, referenciaIso) {
+        return proximosEventos(lista, referenciaIso).filter(contratoConfirmado);
     }
 
     function nomeMes(ano, mes) {
@@ -207,7 +222,9 @@
         rotuloStatus: rotuloStatus,
         valorFinal: valorFinal,
         pdfEmitido: pdfEmitido,
+        contratoConfirmado: contratoConfirmado,
         eventoConfirmado: eventoConfirmado,
+        proximosConfirmados: proximosConfirmados,
         hrefOrcamento: hrefOrcamento,
         filtrar: filtrar,
         ordenarPorEvento: ordenarPorEvento,

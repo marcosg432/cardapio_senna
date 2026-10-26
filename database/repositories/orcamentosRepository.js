@@ -71,6 +71,29 @@ function buscarPorId(id) {
   return aplicarLinhaAoPayload(JSON.parse(row.payload), row);
 }
 
+function confirmacaoValida(gestao) {
+  return !!(
+    gestao &&
+    gestao.status === 'confirmado' &&
+    typeof gestao.confirmado_em === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T/.test(gestao.confirmado_em)
+  );
+}
+
+function copiarConfirmacao(origem) {
+  if (!confirmacaoValida(origem && origem.gestao_contrato)) return null;
+  return {
+    status: 'confirmado',
+    confirmado_em: origem.gestao_contrato.confirmado_em
+  };
+}
+
+function aplicarConfirmacaoPreservada(origem, destino) {
+  const confirmacao = copiarConfirmacao(origem);
+  if (confirmacao) destino.gestao_contrato = confirmacao;
+  else delete destino.gestao_contrato;
+}
+
 function inserir(obj) {
   const errQtd = validarQuantidadesItensOrcamento(obj);
   if (errQtd) throw new Error(errQtd);
@@ -80,33 +103,59 @@ function inserir(obj) {
   if (!id || Number.isNaN(id)) {
     throw new Error('orçamento.id numérico obrigatório');
   }
-  const payload = JSON.stringify(obj);
-  const now = new Date().toISOString();
-  const created = obj.data_criacao || obj.data || now;
-  db.prepare(`
-    INSERT INTO orcamentos (id, payload, created_at, updated_at)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      payload = excluded.payload,
-      updated_at = excluded.updated_at
-  `).run(id, payload, created, now);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(id);
+    if (row) aplicarConfirmacaoPreservada(JSON.parse(row.payload), obj);
+    else delete obj.gestao_contrato;
+    const payload = JSON.stringify(obj);
+    const now = new Date().toISOString();
+    const created = obj.data_criacao || obj.data || now;
+    db.prepare(`
+      INSERT INTO orcamentos (id, payload, created_at, updated_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        payload = excluded.payload,
+        updated_at = excluded.updated_at
+    `).run(id, payload, created, now);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    throw e;
+  }
   return buscarPorId(id);
 }
 
 function atualizar(id, patch) {
-  const atual = buscarPorId(id);
-  if (!atual) return null;
-  const merged = Object.assign({}, atual, patch);
-  merged.id = Number(id);
-  stripMetadadosPayloadPersistencia(merged);
-  const errQtd = validarQuantidadesItensOrcamento(merged);
-  if (errQtd) throw new Error(errQtd);
+  const numero = Number(id);
+  if (!numero || Number.isNaN(numero)) return null;
   const db = getDb();
-  const now = new Date().toISOString();
-  db.prepare(`
-    UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?
-  `).run(JSON.stringify(merged), now, Number(id));
-  return buscarPorId(id);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(numero);
+    if (!row) {
+      db.exec('ROLLBACK');
+      return null;
+    }
+    const atual = JSON.parse(row.payload);
+    const merged = Object.assign({}, atual, patch || {});
+    merged.id = numero;
+    aplicarConfirmacaoPreservada(atual, merged);
+    stripMetadadosPayloadPersistencia(merged);
+    const errQtd = validarQuantidadesItensOrcamento(merged);
+    if (errQtd) {
+      db.exec('ROLLBACK');
+      throw new Error(errQtd);
+    }
+    const now = new Date().toISOString();
+    db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(merged), now, numero);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    throw e;
+  }
+  return buscarPorId(numero);
 }
 
 function substituir(obj) {
@@ -116,17 +165,67 @@ function substituir(obj) {
   const id = Number(obj.id);
   if (!id) throw new Error('id inválido');
   const db = getDb();
-  const now = new Date().toISOString();
-  const payload = JSON.stringify(obj);
-  const created = obj.data_criacao || obj.data || now;
-  db.prepare(`
-    INSERT INTO orcamentos (id, payload, created_at, updated_at)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      payload = excluded.payload,
-      updated_at = excluded.updated_at
-  `).run(id, payload, created, now);
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(id);
+    if (row) aplicarConfirmacaoPreservada(JSON.parse(row.payload), obj);
+    else delete obj.gestao_contrato;
+    const now = new Date().toISOString();
+    const payload = JSON.stringify(obj);
+    const created = obj.data_criacao || obj.data || now;
+    db.prepare(`
+      INSERT INTO orcamentos (id, payload, created_at, updated_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        payload = excluded.payload,
+        updated_at = excluded.updated_at
+    `).run(id, payload, created, now);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    throw e;
+  }
   return buscarPorId(id);
+}
+
+function confirmarContrato(id) {
+  const numero = Number(id);
+  if (!Number.isSafeInteger(numero) || numero <= 0) {
+    const erro = new Error('identificador');
+    erro.code = 'id';
+    throw erro;
+  }
+  const db = getDb();
+  let repetida = false;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT payload, updated_at FROM orcamentos WHERE id = ?').get(numero);
+    if (!row) {
+      db.exec('ROLLBACK');
+      return null;
+    }
+    const atual = JSON.parse(row.payload);
+    if (confirmacaoValida(atual.gestao_contrato)) {
+      repetida = true;
+      db.exec('COMMIT');
+    } else {
+      atual.gestao_contrato = {
+        status: 'confirmado',
+        confirmado_em: new Date().toISOString()
+      };
+      atual.id = numero;
+      stripMetadadosPayloadPersistencia(atual);
+      const now = new Date().toISOString();
+      db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?')
+        .run(JSON.stringify(atual), now, numero);
+      db.exec('COMMIT');
+    }
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    throw e;
+  }
+  const salvo = buscarPorId(numero);
+  return { orcamento: salvo, repetida: repetida };
 }
 
 function deletar(id) {
@@ -141,5 +240,6 @@ module.exports = {
   inserir,
   atualizar,
   substituir,
-  deletar
+  deletar,
+  confirmarContrato
 };

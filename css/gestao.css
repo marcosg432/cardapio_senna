@@ -493,8 +493,23 @@
     color: #121f2a;
 }
 
+.gestao-evento--confirmado {
+    border: 1px solid #121f2a;
+    background: #121f2a;
+    color: #faf8f6;
+}
+
 .gestao-evento--pdf {
-    background: #f6f1ea;
+    box-shadow: inset 3px 0 0 #c4a5ad;
+}
+
+.gestao-evento--confirmado em,
+.gestao-evento--nao-confirmado em {
+    color: #8f7a5e;
+}
+
+.gestao-evento--confirmado em {
+    color: #c4a5ad;
 }
 
 .gestao-dia-item {
@@ -516,6 +531,107 @@
 .gestao-dia-item span {
     color: #5c6b78;
     font-size: 0.86rem;
+}
+
+.gestao-dia-item--confirmado {
+    border-style: solid;
+    border-color: #121f2a;
+}
+
+.gestao-confirmar,
+.gestao-estado-confirmado {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    margin-right: 0.35rem;
+    padding: 0.15rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 650;
+}
+
+.gestao-confirmar {
+    border: 0;
+    background: #121f2a;
+    color: #fff;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.gestao-estado-confirmado {
+    background: #e7f0ea;
+    color: #1d4a32;
+}
+
+.gestao-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(18, 31, 42, 0.46);
+}
+
+.gestao-modal[hidden] {
+    display: none !important;
+}
+
+.gestao-modal-card {
+    width: min(32rem, 100%);
+    padding: 1.25rem 1.25rem 1.1rem;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid rgba(18, 31, 42, 0.08);
+}
+
+.gestao-modal-card h2 {
+    margin: 0.35rem 0 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.45rem;
+    font-weight: 500;
+}
+
+.gestao-modal-aviso,
+.gestao-modal-erro {
+    margin-top: 0.9rem;
+    color: #5c6b78;
+    line-height: 1.5;
+}
+
+.gestao-modal-erro {
+    color: #8a3d32;
+}
+
+.gestao-modal-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.1rem;
+}
+
+#gestao-modal-cancelar,
+#gestao-modal-confirmar {
+    min-height: 44px;
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+#gestao-modal-cancelar {
+    border: 0;
+    background: transparent;
+    color: #5c6b78;
+}
+
+#gestao-modal-confirmar {
+    border: 0;
+    padding: 0 1.1rem;
+    background: #121f2a;
+    color: #fff;
 }
 
 @media (max-width: 1100px) {

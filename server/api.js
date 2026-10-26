@@ -221,10 +221,55 @@ function bloquearSeOrigemEstranha(req, res) {
   return true;
 }
 
+function descartarCorpo(req, callback) {
+  let tamanho = 0;
+  let estourou = false;
+  req.on('data', (parte) => {
+    tamanho += parte.length;
+    if (tamanho > 65536) estourou = true;
+  });
+  req.on('end', () => callback(estourou ? new Error('limite') : null));
+  req.on('error', () => callback(new Error('corpo')));
+}
+
+function confirmarContrato(req, res, id) {
+  descartarCorpo(req, (erroCorpo) => {
+    if (erroCorpo) {
+      sendJson(res, 400, { erro: 'Não foi possível confirmar o contrato.' });
+      return;
+    }
+    try {
+      const resultado = orcamentosRepo.confirmarContrato(id);
+      if (!resultado) {
+        sendJson(res, 404, { erro: 'Orçamento não encontrado.' });
+        return;
+      }
+      const gestao = resultado.orcamento && resultado.orcamento.gestao_contrato;
+      sendJson(res, 200, {
+        ok: true,
+        id: Number(id),
+        repetida: resultado.repetida === true,
+        gestao_contrato: gestao
+      });
+    } catch (e) {
+      const status = e && e.code === 'id' ? 400 : 500;
+      sendJson(res, status, { erro: 'Não foi possível confirmar o contrato.' });
+    }
+  });
+}
+
 function handleApi(req, res, pathname, apiDbReady) {
   if (pathname.startsWith('/api/auth/')) {
     if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
     return auth.handleAuth(req, res, pathname);
+  }
+
+  const confirmar = pathname.match(/^\/api\/orcamentos\/(\d+)\/confirmar-contrato\/?$/);
+  if (confirmar) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (req.method !== 'POST') return sendJson(res, 405, { erro: 'Método não permitido' });
+    if (!auth.exigirAdmin(req, res, { csrf: true })) return;
+    return confirmarContrato(req, res, confirmar[1]);
   }
 
   if (pathname.startsWith('/api/orcamentos')) {

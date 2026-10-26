@@ -22,9 +22,15 @@
     }
 
     function classeEvento(orcamento) {
-        var classes = "gestao-evento gestao-evento--nao-confirmado";
+        var confirmado = GestaoConsulta.contratoConfirmado(orcamento);
+        var classes = "gestao-evento " + (confirmado ? "gestao-evento--confirmado" : "gestao-evento--nao-confirmado");
         if (GestaoConsulta.pdfEmitido(orcamento)) classes += " gestao-evento--pdf";
         return classes;
+    }
+
+    function rotuloSituacao(orcamento) {
+        var pdf = GestaoConsulta.pdfEmitido(orcamento) ? "PDF emitido · " : "";
+        return pdf + (GestaoConsulta.contratoConfirmado(orcamento) ? "confirmado" : "não confirmado");
     }
 
     function htmlEvento(orcamento) {
@@ -53,7 +59,7 @@
                 '<a class="gestao-dia-item" href="' + GestaoConsulta.hrefOrcamento(orcamento.id) + '">' +
                 "<strong>" + GestaoConsulta.escapar(nome) + "</strong>" +
                 "<span>" + GestaoConsulta.escapar(GestaoConsulta.formatarDataIso(iso)) + "</span>" +
-                "<span>" + (GestaoConsulta.pdfEmitido(orcamento) ? "PDF emitido · não confirmado" : "Orçamento · não confirmado") + "</span>" +
+                "<span>" + GestaoConsulta.escapar(rotuloSituacao(orcamento)) + "</span>" +
                 "</a>"
             );
         }).join("");

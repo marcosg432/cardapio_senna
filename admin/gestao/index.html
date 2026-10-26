@@ -23,12 +23,17 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Resumo lido dos orçamentos existentes. A quantidade de PDFs emitidos não confirma contratos. Valores recebidos e pendentes continuam sem cálculo.</p>
+                <p class="gestao-intro">Resumo lido dos orçamentos existentes. Contrato confirmado é só o aceite manual. PDF emitido continua uma contagem separada. Nenhum valor recebido é calculado.</p>
                 <section class="gestao-grade" aria-label="Indicadores">
                     <article class="gestao-card" data-modulo="orcamentos-cadastrados">
                         <h2>Orçamentos cadastrados</h2>
                         <p class="gestao-indicador" id="indicador-orcamentos" aria-live="polite">…</p>
                         <p>Total da lista já gravada.</p>
+                    </article>
+                    <article class="gestao-card" data-modulo="contratos-confirmados">
+                        <h2>Contratos confirmados</h2>
+                        <p class="gestao-indicador" id="indicador-confirmados" aria-live="polite">…</p>
+                        <p>Aceite manual da administradora.</p>
                     </article>
                     <article class="gestao-card" data-modulo="pdfs-emitidos">
                         <h2>PDFs emitidos</h2>
@@ -36,25 +41,20 @@
                         <p>Arquivo gerado. Isso não confirma o contrato.</p>
                     </article>
                     <article class="gestao-card" data-modulo="proximos-eventos">
-                        <h2>Próximos eventos</h2>
+                        <h2>Próximos eventos confirmados</h2>
                         <p class="gestao-indicador" id="indicador-eventos" aria-live="polite">…</p>
-                        <p>Datas de evento de hoje em diante, ainda sem confirmação.</p>
-                    </article>
-                    <article class="gestao-card" data-modulo="valores-recebidos" data-estado="vazio">
-                        <h2>Valores recebidos</h2>
-                        <p class="gestao-indicador" aria-hidden="true">—</p>
-                        <p>Financeiro ainda não integrado</p>
+                        <p>Datas de hoje em diante, apenas dos contratos confirmados.</p>
                     </article>
                 </section>
                 <div class="gestao-secoes">
                     <section class="gestao-painel" data-modulo="agenda-resumo">
                         <header>
-                            <h2>Próximos eventos</h2>
+                            <h2>Próximos eventos confirmados</h2>
                             <p id="nota-proximos">Nome e data, com atalho para o orçamento original.</p>
                         </header>
                         <div id="lista-proximos"><p class="gestao-vazio">Carregando orçamentos…</p></div>
                     </section>
-                    <section class="gestao-painel" data-modulo="resumo-financeiro" data-estado="vazio">
+                    <section class="gestao-painel" data-modulo="valores-recebidos" data-estado="vazio">
                         <header>
                             <h2>Recebidos e pendentes</h2>
                             <p>Nenhum saldo é calculado nesta etapa. A entrada prevista do orçamento não entra como pagamento recebido.</p>

@@ -37,7 +37,7 @@ function assinaturaReal() {
   const ic = db.prepare("PRAGMA integrity_check").get().integrity_check;
   const rows = db.prepare("SELECT id, payload FROM orcamentos ORDER BY id").all();
   db.close();
-  const texto = rows.map((row) => row.id + ":" + row.payload.length).join("|");
+  const texto = rows.map((row) => row.id + ":" + row.payload).join("|");
   return { ic: ic, n: rows.length, hash: crypto.createHash("sha256").update(texto).digest("hex"), rows: rows };
 }
 
@@ -49,7 +49,8 @@ function conferirReais(antes) {
   const lista = atual.rows.map((row) => JSON.parse(row.payload));
   assert(lista.every((o) => consulta.nomeCliente(o).length > 0), "há orçamento sem nome");
   assert(lista.every((o) => consulta.dataEvento(o)), "há orçamento sem data_evento válida");
-  assert(lista.every((o) => consulta.eventoConfirmado(o) === false), "algum evento foi marcado como confirmado");
+  assert(lista.every((o) => consulta.eventoConfirmado(o) === consulta.contratoConfirmado(o)), "agenda divergiu da confirmação");
+  assert(lista.every((o) => consulta.contratoConfirmado(o) === !!(o.gestao_contrato && o.gestao_contrato.status === "confirmado")), "status antigo foi tratado como confirmado");
   assert(lista.every((o) => consulta.hrefOrcamento(o.id).indexOf("orcamento.html?id=") !== -1), "link do orçamento");
   assert(lista.every((o) => Number.isFinite(consulta.valorFinal(o))), "valor final inválido");
   lista.forEach((o) => {
@@ -63,7 +64,7 @@ function conferirReais(antes) {
   assert(consulta.filtrar(lista, { busca: "zzzz-inexistente", status: "todos" }).length === 0, "busca fantasma");
   const gerados = consulta.filtrar(lista, { busca: "", status: "contrato_gerado" });
   const pdfs = lista.filter(consulta.pdfEmitido);
-  console.log("reais", atual.n, "pdfs", pdfs.length, "status_contrato_gerado", gerados.length, "confirmados", 0);
+  console.log("reais", atual.n, "pdfs", pdfs.length, "status_contrato_gerado", gerados.length, "confirmados", lista.filter(consulta.contratoConfirmado).length);
 }
 
 function pedir(method, urlPath, opcoes) {
@@ -302,12 +303,13 @@ async function main() {
   await avaliar(enviar, "document.getElementById('indicador-orcamentos').textContent === '2'");
   const painel = await avaliar(enviar, `(() => ({
     orcamentos: document.getElementById("indicador-orcamentos").textContent,
+    confirmados: document.getElementById("indicador-confirmados").textContent,
     pdfs: document.getElementById("indicador-pdfs").textContent,
     eventos: document.getElementById("indicador-eventos").textContent,
     financeiro: document.body.innerText.indexOf("Financeiro ainda não integrado") !== -1,
     dinheiro: /R\\$\\s*\\d/.test(document.querySelector('[data-modulo="valores-recebidos"]').innerText)
   }))()`);
-  assert(painel.orcamentos === "2" && painel.pdfs === "1" && Number(painel.eventos) >= 1, "dashboard " + JSON.stringify(painel));
+  assert(painel.orcamentos === "2" && painel.confirmados === "0" && painel.pdfs === "1" && painel.eventos === "0", "dashboard " + JSON.stringify(painel));
   assert(painel.financeiro && !painel.dinheiro, "financeiro exibiu saldo");
 
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/orcamento.html?id=910001" });

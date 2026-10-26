@@ -23,7 +23,7 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Consulta dos orçamentos já cadastrados. O status “Contrato gerado” indica que o PDF foi emitido. Nesta etapa isso não confirma o contrato nem registra pagamento.</p>
+                <p class="gestao-intro">Consulta dos orçamentos já cadastrados. Gerar o PDF não confirma o contrato. A confirmação só acontece no botão, depois do aceite. Nenhum pagamento é registrado.</p>
                 <section class="gestao-painel" data-modulo="consulta-contratos">
                     <header>
                         <h2>Orçamentos</h2>
@@ -58,6 +58,20 @@
                     <p class="gestao-nota"><a href="../index.html">Abrir a lista de orçamentos</a></p>
                 </section>
             </main>
+        </div>
+    </div>
+    <div class="gestao-modal" id="gestao-modal" hidden>
+        <div class="gestao-modal-card" role="dialog" aria-modal="true" aria-labelledby="gestao-modal-titulo">
+            <p class="gestao-kicker">Confirmar contrato</p>
+            <h2 id="gestao-modal-titulo"></h2>
+            <p id="gestao-modal-evento"></p>
+            <p id="gestao-modal-valor"></p>
+            <p class="gestao-modal-aviso">O contrato será marcado como confirmado. O PDF já emitido permanece como está e a entrada prevista não vira pagamento recebido.</p>
+            <p class="gestao-modal-erro" id="gestao-modal-erro" hidden>Não foi possível confirmar o contrato.</p>
+            <div class="gestao-modal-acoes">
+                <button type="button" id="gestao-modal-cancelar">Cancelar</button>
+                <button type="button" id="gestao-modal-confirmar">Confirmar contrato</button>
+            </div>
         </div>
     </div>
     <script src="../../js/config.js"></script>
