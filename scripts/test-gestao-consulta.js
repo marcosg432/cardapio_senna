@@ -301,16 +301,19 @@ async function main() {
 
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/index.html" });
   await avaliar(enviar, "document.getElementById('indicador-orcamentos').textContent === '2'");
+  await avaliar(enviar, "document.getElementById('indicador-total-contratado').textContent === 'R$ 0,00'");
   const painel = await avaliar(enviar, `(() => ({
     orcamentos: document.getElementById("indicador-orcamentos").textContent,
     confirmados: document.getElementById("indicador-confirmados").textContent,
     pdfs: document.getElementById("indicador-pdfs").textContent,
     eventos: document.getElementById("indicador-eventos").textContent,
-    financeiro: document.body.innerText.indexOf("Financeiro ainda não integrado") !== -1,
-    dinheiro: /R\\$\\s*\\d/.test(document.querySelector('[data-modulo="valores-recebidos"]').innerText)
+    contratado: document.getElementById("indicador-total-contratado").textContent,
+    recebido: document.getElementById("indicador-total-recebido").textContent,
+    pendente: document.getElementById("indicador-total-pendente").textContent,
+    entrada: document.body.innerText.indexOf("entrada prevista") !== -1
   }))()`);
   assert(painel.orcamentos === "2" && painel.confirmados === "0" && painel.pdfs === "1" && painel.eventos === "0", "dashboard " + JSON.stringify(painel));
-  assert(painel.financeiro && !painel.dinheiro, "financeiro exibiu saldo");
+  assert(painel.contratado === "R$ 0,00" && painel.recebido === "R$ 0,00" && painel.pendente === "R$ 0,00" && painel.entrada, "financeiro " + JSON.stringify(painel));
 
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/orcamento.html?id=910001" });
   const detalhe = await avaliar(enviar, "location.pathname.indexOf('orcamento.html') !== -1 && document.body.innerText.indexOf('Cliente Alfa') !== -1");

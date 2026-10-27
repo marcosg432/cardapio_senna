@@ -23,47 +23,110 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Preparação para o controle de pagamentos. A base futura são os contratos confirmados manualmente: valor contratado, recebimentos, datas, saldo e demonstrativo. Nenhum lançamento é feito nesta etapa.</p>
-                <section class="gestao-grade gestao-grade--2" aria-label="Saldos">
-                    <article class="gestao-card" data-modulo="saldo-recebido" data-estado="vazio">
-                        <h2>Saldo recebido</h2>
-                        <p class="gestao-indicador" aria-hidden="true">—</p>
-                        <p>Financeiro ainda não integrado</p>
+                <p class="gestao-intro">Recebimentos dos contratos confirmados manualmente. A entrada prevista permanece separada e não entra no total recebido. O demonstrativo em PDF fica para uma etapa seguinte.</p>
+                <section class="gestao-grade gestao-grade--3" aria-label="Totais financeiros">
+                    <article class="gestao-card">
+                        <h2>Total contratado</h2>
+                        <p class="gestao-indicador" id="financeiro-total-contratado" aria-live="polite">…</p>
+                        <p>Soma dos valores congelados.</p>
                     </article>
-                    <article class="gestao-card" data-modulo="saldo-pendente" data-estado="vazio">
-                        <h2>Saldo pendente</h2>
-                        <p class="gestao-indicador" aria-hidden="true">—</p>
-                        <p>Financeiro ainda não integrado</p>
+                    <article class="gestao-card">
+                        <h2>Total recebido</h2>
+                        <p class="gestao-indicador" id="financeiro-total-recebido" aria-live="polite">…</p>
+                        <p>Somente pagamentos registrados.</p>
+                    </article>
+                    <article class="gestao-card">
+                        <h2>Total pendente</h2>
+                        <p class="gestao-indicador" id="financeiro-total-pendente" aria-live="polite">…</p>
+                        <p>Contratado menos o que já entrou.</p>
                     </article>
                 </section>
-                <section class="gestao-painel" data-modulo="lista-pagamentos" data-estado="vazio" style="margin-top:0.9rem">
+                <section class="gestao-painel" id="financeiro-lista-painel" style="margin-top:0.9rem">
                     <header>
-                        <h2>Contratos</h2>
-                        <p>A listagem de contratos para controle de pagamento entra na próxima etapa.</p>
+                        <h2>Contratos confirmados</h2>
+                        <p>Cada linha usa o orçamento original. Nenhum pagamento é lançado sozinho.</p>
                     </header>
-                    <div class="gestao-tabela-reserva">
+                    <p class="gestao-vazio" id="financeiro-estado">Carregando contratos…</p>
+                    <div class="gestao-tabela-reserva" id="financeiro-tabela" hidden>
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Contrato</th>
-                                    <th>Evento</th>
-                                    <th>Situação</th>
+                                    <th>Cliente</th>
+                                    <th>Data do evento</th>
+                                    <th>Contratado</th>
+                                    <th>Recebido</th>
+                                    <th>Pendente</th>
+                                    <th></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="3">Nenhum contrato carregado</td>
-                                </tr>
-                            </tbody>
+                            <tbody id="financeiro-corpo"></tbody>
                         </table>
                     </div>
-                    <p class="gestao-vazio">Financeiro ainda não integrado</p>
+                </section>
+                <section class="gestao-painel" id="financeiro-detalhe" hidden style="margin-top:0.9rem">
+                    <header>
+                        <h2 id="financeiro-detalhe-nome"></h2>
+                        <p id="financeiro-detalhe-meta"></p>
+                    </header>
+                    <div class="gestao-grade gestao-grade--3" aria-label="Valores do contrato">
+                        <article class="gestao-card">
+                            <h2>Valor contratado</h2>
+                            <p class="gestao-indicador" id="financeiro-detalhe-contratado">…</p>
+                        </article>
+                        <article class="gestao-card">
+                            <h2>Total recebido</h2>
+                            <p class="gestao-indicador" id="financeiro-detalhe-recebido">…</p>
+                        </article>
+                        <article class="gestao-card">
+                            <h2>Saldo pendente</h2>
+                            <p class="gestao-indicador" id="financeiro-detalhe-pendente">…</p>
+                        </article>
+                    </div>
+                    <p class="gestao-nota" id="financeiro-detalhe-entrada"></p>
+                    <h3 class="gestao-subtitulo">Histórico de pagamentos</h3>
+                    <div id="financeiro-historico"></div>
+                    <p class="gestao-vazio" id="financeiro-sem-congelamento" hidden>O valor deste contrato ainda não foi congelado. Nenhum pagamento pode ser registrado até a inicialização financeira.</p>
+                    <form class="gestao-filtros gestao-form-pagamento" id="financeiro-form" hidden>
+                        <label>Valor recebido
+                            <input id="financeiro-valor" inputmode="decimal" autocomplete="off" placeholder="0,00" required>
+                        </label>
+                        <label>Data do pagamento
+                            <input id="financeiro-data" type="date" required>
+                        </label>
+                        <label>Forma de pagamento
+                            <select id="financeiro-forma" required>
+                                <option value="pix">PIX</option>
+                                <option value="dinheiro">Dinheiro</option>
+                                <option value="transferencia">Transferência</option>
+                                <option value="cartao">Cartão</option>
+                                <option value="boleto">Boleto</option>
+                                <option value="outro">Outro</option>
+                            </select>
+                        </label>
+                        <button type="submit" class="gestao-confirmar" id="financeiro-registrar">Registrar pagamento</button>
+                    </form>
+                    <p class="gestao-mensagem" id="financeiro-mensagem" hidden></p>
                 </section>
             </main>
+        </div>
+    </div>
+    <div class="gestao-modal" id="financeiro-modal" hidden>
+        <div class="gestao-modal-card" role="dialog" aria-modal="true" aria-labelledby="financeiro-modal-titulo">
+            <p class="gestao-kicker">Registrar pagamento</p>
+            <h2 id="financeiro-modal-titulo">Confirmar lançamento</h2>
+            <p id="financeiro-modal-resumo"></p>
+            <p class="gestao-modal-aviso">O valor será somado aos recebimentos deste contrato. A entrada prevista continua fora dessa conta.</p>
+            <p class="gestao-modal-erro" id="financeiro-modal-erro" hidden></p>
+            <div class="gestao-modal-acoes">
+                <button type="button" id="financeiro-modal-cancelar">Cancelar</button>
+                <button type="button" id="financeiro-modal-confirmar">Confirmar pagamento</button>
+            </div>
         </div>
     </div>
     <script src="../../js/config.js"></script>
     <script src="../../js/admin-common.js"></script>
     <script src="../../js/gestao/shell.js"></script>
+    <script src="../../js/gestao/consulta.js"></script>
+    <script src="../../js/gestao/financeiro.js"></script>
 </body>
 </html>

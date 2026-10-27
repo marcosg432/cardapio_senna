@@ -48,6 +48,7 @@ function getDb() {
     _db = new DatabaseSync(DB_PATH);
     _db.exec('PRAGMA journal_mode = WAL;');
     _db.exec('PRAGMA foreign_keys = ON;');
+    _db.exec('PRAGMA busy_timeout = 5000;');
     runMigrations(_db);
   }
   return _db;

@@ -634,6 +634,36 @@
     color: #fff;
 }
 
+.gestao-subtitulo {
+    margin: 1.2rem 0 0.4rem;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.gestao-form-pagamento {
+    align-items: end;
+    margin-top: 1rem;
+}
+
+.gestao-form-pagamento[hidden],
+#financeiro-detalhe[hidden],
+#financeiro-tabela[hidden],
+#financeiro-sem-congelamento[hidden],
+#financeiro-mensagem[hidden],
+#financeiro-estado[hidden] {
+    display: none !important;
+}
+
+.gestao-mensagem {
+    margin: 0.8rem 0 0;
+    color: #1d4a32;
+}
+
+.gestao-mensagem--erro {
+    color: #8a3d32;
+}
+
 @media (max-width: 1100px) {
     .gestao-grade,
     .gestao-grade--3 {

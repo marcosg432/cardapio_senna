@@ -322,14 +322,18 @@ async function main() {
 
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/index.html" });
   await avaliar(enviar, "document.getElementById('indicador-orcamentos').textContent !== '\u2026'");
+  await avaliar(enviar, "document.getElementById('indicador-total-contratado').textContent === 'R$ 230,00'");
   const painel = await avaliar(enviar, `(() => ({
     orcamentos: document.getElementById("indicador-orcamentos").textContent,
     confirmados: document.getElementById("indicador-confirmados").textContent,
     pdfs: document.getElementById("indicador-pdfs").textContent,
     eventos: document.getElementById("indicador-eventos").textContent,
-    dinheiro: /R\\$\\s*\\d/.test(document.querySelector('[data-modulo="valores-recebidos"]').innerText)
+    contratado: document.getElementById("indicador-total-contratado").textContent,
+    recebido: document.getElementById("indicador-total-recebido").textContent,
+    pendente: document.getElementById("indicador-total-pendente").textContent
   }))()`);
-  assert(painel.orcamentos === "3" && painel.confirmados === "2" && painel.pdfs === "1" && painel.eventos === "2" && !painel.dinheiro, "dashboard " + JSON.stringify(painel));
+  assert(painel.orcamentos === "3" && painel.confirmados === "2" && painel.pdfs === "1" && painel.eventos === "2", "dashboard " + JSON.stringify(painel));
+  assert(painel.contratado === "R$ 230,00" && painel.recebido === "R$ 0,00" && painel.pendente === "R$ 230,00", "financeiro " + JSON.stringify(painel));
 
   const depois = assinaturaReal();
   assert(depois.hash === antes.hash && depois.confirmados === antes.confirmados && depois.n === 4, "orçamentos reais foram alterados");

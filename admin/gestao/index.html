@@ -23,7 +23,7 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Resumo lido dos orçamentos existentes. Contrato confirmado é só o aceite manual. PDF emitido continua uma contagem separada. Nenhum valor recebido é calculado.</p>
+                <p class="gestao-intro">Resumo lido dos orçamentos existentes. Contrato confirmado é só o aceite manual. Os totais financeiros usam apenas contratos com valor congelado e pagamentos registrados.</p>
                 <section class="gestao-grade" aria-label="Indicadores">
                     <article class="gestao-card" data-modulo="orcamentos-cadastrados">
                         <h2>Orçamentos cadastrados</h2>
@@ -54,12 +54,25 @@
                         </header>
                         <div id="lista-proximos"><p class="gestao-vazio">Carregando orçamentos…</p></div>
                     </section>
-                    <section class="gestao-painel" data-modulo="valores-recebidos" data-estado="vazio">
+                    <section class="gestao-painel" data-modulo="valores-recebidos">
                         <header>
                             <h2>Recebidos e pendentes</h2>
-                            <p>Nenhum saldo é calculado nesta etapa. A entrada prevista do orçamento não entra como pagamento recebido.</p>
+                            <p>A entrada prevista do orçamento não entra como pagamento recebido.</p>
                         </header>
-                        <p class="gestao-vazio">Financeiro ainda não integrado</p>
+                        <div class="gestao-grade gestao-grade--3">
+                            <article class="gestao-card">
+                                <h2>Total contratado</h2>
+                                <p class="gestao-indicador" id="indicador-total-contratado" aria-live="polite">…</p>
+                            </article>
+                            <article class="gestao-card">
+                                <h2>Total recebido</h2>
+                                <p class="gestao-indicador" id="indicador-total-recebido" aria-live="polite">…</p>
+                            </article>
+                            <article class="gestao-card">
+                                <h2>Total pendente</h2>
+                                <p class="gestao-indicador" id="indicador-total-pendente" aria-live="polite">…</p>
+                            </article>
+                        </div>
                     </section>
                 </div>
                 <p class="gestao-nota">Os orçamentos continuam sendo editados na lista administrativa já existente.</p>

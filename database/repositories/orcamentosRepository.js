@@ -1,4 +1,5 @@
 const { getDb } = require('../db');
+const { valorContratadoCentavos } = require('../dinheiro');
 
 const META_EDITADO_SO_LOCAL_PAYLOAD = '__editadoSomenteLocalEm';
 /** Iso do SQLite; apenas leitura no cliente para fundir lista — não persistir dentro do payload JSON armazenado */
@@ -209,15 +210,19 @@ function confirmarContrato(id) {
       repetida = true;
       db.exec('COMMIT');
     } else {
+      const now = new Date().toISOString();
       atual.gestao_contrato = {
         status: 'confirmado',
-        confirmado_em: new Date().toISOString()
+        confirmado_em: now
       };
       atual.id = numero;
       stripMetadadosPayloadPersistencia(atual);
-      const now = new Date().toISOString();
       db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?')
         .run(JSON.stringify(atual), now, numero);
+      db.prepare(`
+        INSERT INTO financeiro_contratos (orcamento_id, valor_contratado_centavos, congelado_em)
+        VALUES (?, ?, ?)
+      `).run(numero, valorContratadoCentavos(atual), now);
       db.exec('COMMIT');
     }
   } catch (e) {
