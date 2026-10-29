@@ -651,8 +651,13 @@
 #financeiro-tabela[hidden],
 #financeiro-sem-congelamento[hidden],
 #financeiro-mensagem[hidden],
-#financeiro-estado[hidden] {
+#financeiro-estado[hidden],
+#financeiro-demonstrativo[hidden] {
     display: none !important;
+}
+
+.gestao-demonstrativo-acoes {
+    margin-top: 1rem;
 }
 
 .gestao-mensagem {

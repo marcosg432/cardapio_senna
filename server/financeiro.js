@@ -1,5 +1,6 @@
 const auth = require('./auth');
 const financeiroRepo = require('../database/repositories/financeiroRepository');
+const demonstrativoPdf = require('./demonstrativoPdf');
 
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
@@ -63,14 +64,43 @@ function responderPagamento(res, resultado) {
   return sendJson(res, resultado.status, { erro: mensagem(resultado.motivo) });
 }
 
+function sendPdf(res, id, buffer) {
+  const nome = 'demonstrativo-financeiro-' + id + '.pdf';
+  res.writeHead(200, {
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': 'attachment; filename="' + nome + '"',
+    'Content-Length': buffer.length,
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff'
+  });
+  res.end(buffer);
+}
+
 function handleFinanceiro(req, res, pathname) {
+  const demonstrativo = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/demonstrativo\/?$/);
   const pagamento = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/pagamentos\/?$/);
   const detalhe = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/?$/);
   const lista = pathname === '/api/financeiro/contratos' || pathname === '/api/financeiro/contratos/';
-  if (!pagamento && !detalhe && !lista) return false;
+  if (!demonstrativo && !pagamento && !detalhe && !lista) return false;
 
   const gravacao = req.method !== 'GET' && req.method !== 'HEAD';
   if (!auth.exigirAdmin(req, res, { csrf: gravacao })) return true;
+
+  if (demonstrativo) {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      sendJson(res, 405, { erro: 'Método não permitido' });
+      return true;
+    }
+    try {
+      const emissao = demonstrativoPdf.emitir(demonstrativo[1]);
+      if (emissao.status === 404) sendJson(res, 404, { erro: 'Contrato não encontrado.' });
+      else if (emissao.status !== 200) sendJson(res, emissao.status, { erro: mensagem(emissao.motivo) });
+      else sendPdf(res, emissao.id, emissao.buffer);
+    } catch (e) {
+      sendJson(res, 500, { erro: 'Não foi possível gerar o demonstrativo.' });
+    }
+    return true;
+  }
 
   if (lista) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {

@@ -23,7 +23,7 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Recebimentos dos contratos confirmados manualmente. A entrada prevista permanece separada e não entra no total recebido. O demonstrativo em PDF fica para uma etapa seguinte.</p>
+                <p class="gestao-intro">Recebimentos dos contratos confirmados manualmente. A entrada prevista permanece separada e não entra no total recebido. O demonstrativo em PDF é gerado pelo servidor com os dados oficiais e não altera os pagamentos.</p>
                 <section class="gestao-grade gestao-grade--3" aria-label="Totais financeiros">
                     <article class="gestao-card">
                         <h2>Total contratado</h2>
@@ -105,6 +105,9 @@
                         </label>
                         <button type="submit" class="gestao-confirmar" id="financeiro-registrar">Registrar pagamento</button>
                     </form>
+                    <p class="gestao-demonstrativo-acoes">
+                        <button type="button" class="gestao-confirmar" id="financeiro-demonstrativo" hidden>Gerar demonstrativo PDF</button>
+                    </p>
                     <p class="gestao-mensagem" id="financeiro-mensagem" hidden></p>
                 </section>
             </main>

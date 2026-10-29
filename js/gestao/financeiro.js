@@ -170,8 +170,10 @@
                 }).join("") + "</tbody></table></div>";
         }
         var semCongelamento = document.getElementById("financeiro-sem-congelamento");
+        var botaoPdf = document.getElementById("financeiro-demonstrativo");
         semCongelamento.hidden = !!contrato.congelado;
         formulario.hidden = !contrato.congelado;
+        if (botaoPdf) botaoPdf.hidden = !contrato.congelado;
         document.getElementById("financeiro-data").max = hojeIso();
         mostrarMensagem("");
         detalhe.scrollIntoView({ block: "nearest" });
@@ -281,6 +283,45 @@
         });
     }
 
+    function nomeArquivoPdf(cabecalho, id) {
+        var match = /filename="(demonstrativo-financeiro-\d+\.pdf)"/.exec(String(cabecalho || ""));
+        return match ? match[1] : "demonstrativo-financeiro-" + id + ".pdf";
+    }
+
+    function gerarDemonstrativo() {
+        if (!contratoAberto || !contratoAberto.congelado || !contratoAberto.id) return;
+        var botao = document.getElementById("financeiro-demonstrativo");
+        var id = contratoAberto.id;
+        if (botao) botao.disabled = true;
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/financeiro/contratos/" + encodeURIComponent(id) + "/demonstrativo", true);
+        xhr.withCredentials = true;
+        xhr.responseType = "blob";
+        xhr.onload = function () {
+            if (botao) botao.disabled = false;
+            var tipo = xhr.getResponseHeader("Content-Type") || "";
+            if (xhr.status !== 200 || tipo.indexOf("application/pdf") !== 0 || !xhr.response) {
+                mostrarMensagem("Não foi possível gerar o demonstrativo.", true);
+                return;
+            }
+            var url = URL.createObjectURL(xhr.response);
+            var link = document.createElement("a");
+            link.href = url;
+            link.download = nomeArquivoPdf(xhr.getResponseHeader("Content-Disposition"), id);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+            mostrarMensagem("Demonstrativo gerado.", false);
+        };
+        xhr.onerror = function () {
+            if (botao) botao.disabled = false;
+            mostrarMensagem("Não foi possível gerar o demonstrativo.", true);
+        };
+        xhr.send();
+    }
+
+    document.getElementById("financeiro-demonstrativo").addEventListener("click", gerarDemonstrativo);
     corpo.addEventListener("click", function (evento) {
         var botao = evento.target.closest("button");
         if (!botao) return;

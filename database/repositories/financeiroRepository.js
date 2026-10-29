@@ -17,6 +17,10 @@ function nomeCliente(orcamento) {
   return String((orcamento && (orcamento.nome_cliente || orcamento.cliente)) || '').trim();
 }
 
+function tipoEvento(orcamento) {
+  return String((orcamento && (orcamento.tipo_evento || orcamento.evento_tipo)) || '').trim();
+}
+
 function dataEventoIso(orcamento) {
   const texto = String((orcamento && (orcamento.data_evento || orcamento.evento_data)) || '').trim();
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
@@ -149,6 +153,7 @@ function detalhar(id) {
   return {
     status: 200,
     contrato: Object.assign(resumoContrato(orcamento, congelado, recebido), {
+      tipo_evento: tipoEvento(orcamento),
       entrada_prevista_centavos: dinheiro.entradaPrevistaCentavos(orcamento),
       historico: historico
     })
