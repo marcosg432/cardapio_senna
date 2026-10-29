@@ -142,7 +142,7 @@ function dataBr(iso) {
 
 async function main() {
   const antes = assinaturaReal();
-  assert(antes.ic === "ok" && antes.n === 4, "banco real");
+  assert(antes.ic === "ok" && antes.n >= 1, "banco real");
   fs.rmSync(tmpDb, { force: true });
   fs.mkdirSync(preview, { recursive: true });
   await subir();

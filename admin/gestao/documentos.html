@@ -23,23 +23,117 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Espaço para os documentos novos. A proposta de orçamento e o contrato em PDF continuam disponíveis apenas no detalhe de cada orçamento.</p>
-                <section class="gestao-grade gestao-grade--3" aria-label="Tipos de documento">
-                    <article class="gestao-card" data-modulo="pdf-contratos" data-estado="vazio">
-                        <h2>PDFs</h2>
-                        <p>Geração de novos PDFs ainda não disponível nesta etapa.</p>
-                        <p class="gestao-vazio">Nenhum documento carregado</p>
-                    </article>
-                    <article class="gestao-card" data-modulo="demonstrativos" data-estado="vazio">
-                        <h2>Demonstrativos financeiros</h2>
-                        <p>Financeiro ainda não integrado</p>
-                        <p class="gestao-vazio">Nenhum demonstrativo disponível</p>
-                    </article>
-                    <article class="gestao-card" data-modulo="ordens-producao" data-estado="vazio">
-                        <h2>Ordens de produção</h2>
-                        <p>A cozinha ainda não recebe documentos por aqui.</p>
-                        <p class="gestao-vazio">Nenhuma ordem disponível</p>
-                    </article>
+                <p class="gestao-intro">O documento pode ser editado como rascunho. A pré-visualização contém a marca de rascunho. Emitir PDF cria uma versão oficial. As versões anteriores ficam preservadas. Documentos de contratos confirmados mantêm protegidos os produtos, as quantidades, os valores, os pagamentos e a confirmação.</p>
+                <p id="documentos-mensagem" class="gestao-mensagem" hidden></p>
+                <section class="gestao-painel">
+                    <header class="gestao-painel-cabeca">
+                        <div>
+                            <h2>Histórico</h2>
+                            <p id="documentos-estado">Carregando documentos…</p>
+                        </div>
+                    </header>
+                    <form class="documentos-barra" id="documentos-filtros">
+                        <label>Tipo
+                            <select id="documentos-tipo">
+                                <option value="">Todos</option>
+                                <option value="orcamento">Orçamento</option>
+                                <option value="contrato">Contrato</option>
+                                <option value="demonstrativo">Demonstrativo</option>
+                                <option value="producao_evento">Produção do evento</option>
+                                <option value="producao_dia">Produção do dia</option>
+                            </select>
+                        </label>
+                        <label>Cliente ou identificação
+                            <input type="search" id="documentos-busca" placeholder="Nome, contrato ou data">
+                        </label>
+                        <button type="submit" class="gestao-confirmar">Filtrar</button>
+                    </form>
+                    <form class="documentos-barra" id="documentos-abrir">
+                        <label>Novo documento
+                            <select id="documentos-novo-tipo">
+                                <option value="producao_evento">Produção do evento</option>
+                                <option value="producao_dia">Produção do dia</option>
+                                <option value="orcamento">Orçamento</option>
+                                <option value="contrato">Contrato</option>
+                                <option value="demonstrativo">Demonstrativo</option>
+                            </select>
+                        </label>
+                        <label>Contrato
+                            <input type="number" id="documentos-novo-id" min="1" step="1" inputmode="numeric">
+                        </label>
+                        <label>Data
+                            <input type="date" id="documentos-nova-data">
+                        </label>
+                        <button type="submit" class="gestao-confirmar">Abrir documento</button>
+                    </form>
+                    <div class="gestao-tabela-reserva" id="documentos-tabela" hidden>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Identificação</th>
+                                    <th>Cliente</th>
+                                    <th>Estado</th>
+                                    <th>Versão</th>
+                                    <th>Emissão</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentos-corpo"></tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="gestao-painel" id="documentos-detalhe" hidden>
+                    <header class="gestao-painel-cabeca">
+                        <div>
+                            <h2 id="documentos-detalhe-titulo">Documento</h2>
+                            <p id="documentos-detalhe-meta"></p>
+                        </div>
+                    </header>
+                    <p class="producao-aviso" id="documentos-aviso-emissao"></p>
+                    <p class="producao-aviso" id="documentos-aviso-contrato" hidden></p>
+                    <div id="documentos-leitura"></div>
+                    <form class="documentos-editor" id="documentos-editor">
+                        <p id="documentos-editor-vazio">Crie um rascunho para editar os campos permitidos.</p>
+                        <div id="documentos-campos"></div>
+                        <label>Motivo da alteração
+                            <input type="text" id="documentos-motivo" maxlength="500" required>
+                        </label>
+                        <div class="producao-acoes">
+                            <button type="button" class="gestao-confirmar" id="documentos-criar">Criar rascunho</button>
+                            <button type="submit" class="gestao-confirmar" id="documentos-salvar">Salvar rascunho</button>
+                            <button type="button" class="gestao-confirmar" id="documentos-previa">Pré-visualizar</button>
+                            <button type="button" class="gestao-confirmar" id="documentos-descartar">Descartar rascunho</button>
+                            <button type="button" class="gestao-confirmar" id="documentos-emitir" disabled>Emitir PDF</button>
+                        </div>
+                    </form>
+                    <div id="documentos-previa-painel" hidden></div>
+                    <h3 class="gestao-subtitulo">Versões</h3>
+                    <div class="documentos-barra">
+                        <label>Comparar
+                            <select id="documentos-comparar-a"></select>
+                        </label>
+                        <label>com
+                            <select id="documentos-comparar-b"></select>
+                        </label>
+                        <button type="button" class="gestao-confirmar" id="documentos-comparar">Comparar</button>
+                    </div>
+                    <div id="documentos-comparacao" hidden></div>
+                    <div class="gestao-tabela-reserva">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Versão</th>
+                                    <th>Estado</th>
+                                    <th>Quando</th>
+                                    <th>Administrador</th>
+                                    <th>Motivo</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentos-historico"></tbody>
+                        </table>
+                    </div>
                 </section>
             </main>
         </div>
@@ -47,5 +141,7 @@
     <script src="../../js/config.js"></script>
     <script src="../../js/admin-common.js"></script>
     <script src="../../js/gestao/shell.js"></script>
+    <script src="../../js/gestao/consulta.js"></script>
+    <script src="../../js/gestao/documentos.js"></script>
 </body>
 </html>

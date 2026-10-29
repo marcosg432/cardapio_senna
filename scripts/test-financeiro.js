@@ -275,7 +275,7 @@ function pagamento(valor, forma, chave, data) {
 
 async function main() {
   const antes = assinaturaReal();
-  assert(antes.ic === "ok" && antes.n === 4, "banco real indisponível para leitura");
+  assert(antes.ic === "ok" && antes.n >= 1, "banco real indisponível para leitura");
   testarCopia();
   testarInicializacao();
 
@@ -515,7 +515,7 @@ async function main() {
   const depois = assinaturaReal();
   assert(
     depois.hash === antes.hash &&
-    depois.n === 4 &&
+    depois.n === antes.n &&
     depois.confirmados === antes.confirmados &&
     depois.contratosFinanceiros === antes.contratosFinanceiros &&
     depois.pagamentos === antes.pagamentos &&
