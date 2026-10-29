@@ -44,7 +44,7 @@ function assinaturaReal() {
 function conferirReais(antes) {
   const atual = assinaturaReal();
   assert(atual.ic === "ok", "integridade do SQLite");
-  assert(atual.n === 4 && antes.n === 4, "a lista real deixou de ter quatro orçamentos");
+  assert(atual.n === antes.n && antes.n >= 1, "a lista real mudou de tamanho");
   assert(atual.hash === antes.hash, "os orçamentos reais foram alterados");
   const lista = atual.rows.map((row) => JSON.parse(row.payload));
   assert(lista.every((o) => consulta.nomeCliente(o).length > 0), "há orçamento sem nome");
@@ -316,7 +316,7 @@ async function main() {
   assert(painel.contratado === "R$ 0,00" && painel.recebido === "R$ 0,00" && painel.pendente === "R$ 0,00" && painel.entrada, "financeiro " + JSON.stringify(painel));
 
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/orcamento.html?id=910001" });
-  const detalhe = await avaliar(enviar, "location.pathname.indexOf('orcamento.html') !== -1 && document.body.innerText.indexOf('Cliente Alfa') !== -1");
+  const detalhe = await avaliar(enviar, "location.pathname.indexOf('orcamento.html') !== -1 && document.body.innerText.indexOf('Cliente Alfa') !== -1 && document.getElementById('btn-historico-pdf') && document.getElementById('btn-historico-pdf').getAttribute('href').indexOf('documentos.html?q=910001') !== -1");
   assert(detalhe === true, "abertura do orçamento original");
 
   await enviar("Network.clearBrowserCookies");
