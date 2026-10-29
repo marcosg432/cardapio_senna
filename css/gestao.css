@@ -669,6 +669,35 @@
     color: #8a3d32;
 }
 
+.producao-qtd {
+    font-weight: 700;
+    color: #121f2a;
+}
+
+.producao-aviso {
+    margin: 0.8rem 0 0;
+    color: #6a5a4a;
+    font-size: 0.88rem;
+}
+
+.producao-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.producao-acoes .gestao-confirmar {
+    padding: 0.45rem 0.75rem;
+}
+
+#producao-detalhe[hidden],
+#producao-tabela[hidden],
+#producao-dia-tabela[hidden],
+#producao-estado[hidden],
+#producao-mensagem[hidden] {
+    display: none !important;
+}
+
 @media (max-width: 1100px) {
     .gestao-grade,
     .gestao-grade--3 {

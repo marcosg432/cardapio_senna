@@ -1,0 +1,230 @@
+/**
+ * Produção da cozinha. Só consulta o servidor e baixa os PDFs oficiais.
+ */
+(function () {
+    var estado = document.getElementById("producao-estado");
+    var tabela = document.getElementById("producao-tabela");
+    var corpo = document.getElementById("producao-corpo");
+    var detalhe = document.getElementById("producao-detalhe");
+    var mensagem = document.getElementById("producao-mensagem");
+    var campoData = document.getElementById("producao-data");
+    if (!estado || !corpo || typeof GestaoConsulta === "undefined") return;
+
+    function escapar(valor) {
+        return GestaoConsulta.escapar(valor);
+    }
+
+    function dataTexto(iso) {
+        return iso ? GestaoConsulta.formatarDataIso(iso) : "—";
+    }
+
+    function hojeIso() {
+        var data = new Date();
+        var mes = String(data.getMonth() + 1).padStart(2, "0");
+        var dia = String(data.getDate()).padStart(2, "0");
+        return data.getFullYear() + "-" + mes + "-" + dia;
+    }
+
+    function mostrarMensagem(texto, erro) {
+        mensagem.hidden = !texto;
+        mensagem.textContent = texto || "";
+        mensagem.className = erro ? "gestao-mensagem gestao-mensagem--erro" : "gestao-mensagem";
+    }
+
+    function pedir(caminho, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", caminho, true);
+        xhr.withCredentials = true;
+        xhr.onload = function () {
+            if (xhr.status === 401) {
+                window.location.replace("/admin/");
+                return;
+            }
+            var dados = null;
+            try { dados = JSON.parse(xhr.responseText || "null"); } catch (e) { dados = null; }
+            callback(xhr.status, dados);
+        };
+        xhr.onerror = function () { callback(0, null); };
+        xhr.send();
+    }
+
+    function baixar(caminho, botao) {
+        if (botao) botao.disabled = true;
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", caminho, true);
+        xhr.withCredentials = true;
+        xhr.responseType = "blob";
+        xhr.onload = function () {
+            if (botao) botao.disabled = false;
+            var tipo = xhr.getResponseHeader("Content-Type") || "";
+            if (xhr.status !== 200 || tipo.indexOf("application/pdf") !== 0 || !xhr.response) {
+                mostrarMensagem("Não foi possível gerar a ficha.", true);
+                return;
+            }
+            var cabecalho = xhr.getResponseHeader("Content-Disposition") || "";
+            var match = /filename="([^"]+)"/.exec(cabecalho);
+            var url = URL.createObjectURL(xhr.response);
+            var link = document.createElement("a");
+            link.href = url;
+            link.download = match ? match[1] : "producao.pdf";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+            mostrarMensagem("Ficha gerada.", false);
+        };
+        xhr.onerror = function () {
+            if (botao) botao.disabled = false;
+            mostrarMensagem("Não foi possível gerar a ficha.", true);
+        };
+        xhr.send();
+    }
+
+    function desenharLista(dados) {
+        var eventos = dados && dados.eventos || [];
+        if (!eventos.length) {
+            estado.hidden = false;
+            estado.textContent = "Nenhum contrato confirmado.";
+            tabela.hidden = true;
+            corpo.innerHTML = "";
+            return;
+        }
+        estado.hidden = true;
+        tabela.hidden = false;
+        corpo.innerHTML = eventos.map(function (evento) {
+            return (
+                "<tr>" +
+                "<td>" + escapar(dataTexto(evento.data_evento)) + "</td>" +
+                "<td>" + escapar(evento.tipo_evento || "—") + "</td>" +
+                "<td>" + escapar(evento.convidados == null ? "—" : evento.convidados) + "</td>" +
+                "<td class=\"producao-qtd\">" + escapar(evento.produtos) + "</td>" +
+                "<td>" + escapar(evento.situacao) + "</td>" +
+                "<td><div class=\"producao-acoes\">" +
+                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"ver\" data-id=\"" + escapar(evento.id) + "\">Ver produção</button>" +
+                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar ficha PDF</button>" +
+                "</div></td></tr>"
+            );
+        }).join("");
+    }
+
+    function itemLista(rotulo, valor) {
+        if (valor == null || valor === "") return "";
+        return "<li><strong>" + escapar(rotulo) + ":</strong> " + escapar(valor) + "</li>";
+    }
+
+    function desenharDetalhe(evento) {
+        document.getElementById("producao-detalhe-titulo").textContent = evento.tipo_evento || "Evento";
+        document.getElementById("producao-detalhe-meta").textContent = "Contrato " + evento.id + " · " + dataTexto(evento.data_evento);
+        document.getElementById("producao-detalhe-dados").innerHTML = [
+            itemLista("Convidados", evento.convidados),
+            itemLista("Entrega ou retirada", evento.horario_entrega),
+            itemLista("Festa", evento.horario_festa),
+            itemLista("Modalidade", evento.modalidade)
+        ].join("");
+        var avisos = document.getElementById("producao-detalhe-avisos");
+        avisos.innerHTML = (evento.avisos || []).map(function (aviso) {
+            return "<p class=\"producao-aviso\">" + escapar(aviso) + "</p>";
+        }).join("");
+        var itens = evento.itens || [];
+        document.getElementById("producao-detalhe-itens").innerHTML = itens.length ? itens.map(function (item) {
+            return (
+                "<tr><td>" + escapar(item.nome) + "</td>" +
+                "<td class=\"producao-qtd\">" + escapar(item.quantidade_texto) + "</td>" +
+                "<td>" + escapar(item.unidade) + "</td>" +
+                "<td>" + (item.complementar ? "Sim" : "—") + "</td></tr>"
+            );
+        }).join("") : "<tr><td colspan=\"4\">Nenhum produto contratado.</td></tr>";
+        detalhe.hidden = false;
+        detalhe.scrollIntoView({ block: "nearest" });
+    }
+
+    function desenharDia(dia) {
+        var vazio = document.getElementById("producao-dia-estado");
+        var grade = document.getElementById("producao-dia-tabela");
+        var eventos = document.getElementById("producao-dia-eventos");
+        var totais = dia && dia.totais || [];
+        var lista = dia && dia.eventos || [];
+        if (!lista.length) {
+            vazio.hidden = false;
+            vazio.textContent = "Nenhum evento confirmado nesta data.";
+            grade.hidden = true;
+            eventos.innerHTML = "";
+            return;
+        }
+        vazio.hidden = true;
+        grade.hidden = false;
+        document.getElementById("producao-dia-corpo").innerHTML = totais.map(function (item) {
+            return (
+                "<tr><td>" + escapar(item.nome) + "</td>" +
+                "<td class=\"producao-qtd\">" + escapar(item.quantidade_texto) + "</td>" +
+                "<td>" + escapar(item.unidade) + "</td></tr>"
+            );
+        }).join("") || "<tr><td colspan=\"3\">Nenhum produto com quantidade válida.</td></tr>";
+        eventos.innerHTML = lista.map(function (evento) {
+            var produtos = (evento.itens || []).map(function (item) {
+                return "<li>" + escapar(item.quantidade_texto) + " · " + escapar(item.nome) + " · " + escapar(item.unidade) + "</li>";
+            }).join("");
+            return (
+                "<section><h3 class=\"gestao-subtitulo\">Contrato " + escapar(evento.id) + " · " + escapar(evento.tipo_evento || "Evento") + "</h3><ul>" +
+                produtos + "</ul></section>"
+            );
+        }).join("");
+    }
+
+    function carregarLista() {
+        pedir("/api/producao/eventos", function (status, dados) {
+            if (status !== 200 || !dados) {
+                estado.hidden = false;
+                estado.textContent = "Não foi possível carregar a produção.";
+                tabela.hidden = true;
+                return;
+            }
+            desenharLista(dados);
+        });
+    }
+
+    function carregarDia() {
+        if (!campoData.value) return;
+        pedir("/api/producao/datas/" + encodeURIComponent(campoData.value), function (status, dados) {
+            if (status !== 200 || !dados) {
+                mostrarMensagem("Não foi possível consultar o dia.", true);
+                return;
+            }
+            desenharDia(dados);
+        });
+    }
+
+    corpo.addEventListener("click", function (evento) {
+        var botao = evento.target.closest("button");
+        if (!botao) return;
+        var id = botao.getAttribute("data-id");
+        if (botao.getAttribute("data-acao") === "pdf") {
+            baixar("/api/producao/eventos/" + encodeURIComponent(id) + "/pdf", botao);
+            return;
+        }
+        pedir("/api/producao/eventos/" + encodeURIComponent(id), function (status, dados) {
+            if (status !== 200 || !dados) {
+                mostrarMensagem("Não foi possível abrir a produção.", true);
+                return;
+            }
+            desenharDetalhe(dados);
+        });
+    });
+
+    campoData.value = hojeIso();
+    campoData.addEventListener("change", carregarDia);
+    document.getElementById("producao-dia-pdf").addEventListener("click", function () {
+        if (!campoData.value) return;
+        baixar("/api/producao/datas/" + encodeURIComponent(campoData.value) + "/pdf", this);
+    });
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            carregarLista();
+            carregarDia();
+        });
+    } else {
+        carregarLista();
+        carregarDia();
+    }
+})();

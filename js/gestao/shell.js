@@ -8,6 +8,7 @@
         { id: "dashboard", titulo: "Dashboard", href: "index.html", icone: "painel" },
         { id: "financeiro", titulo: "Financeiro", href: "financeiro.html", icone: "financeiro" },
         { id: "agenda", titulo: "Agenda", href: "agenda.html", icone: "agenda" },
+        { id: "producao", titulo: "Produção", href: "producao.html", icone: "producao" },
         { id: "contratos", titulo: "Contratos", href: "contratos.html", icone: "contratos" },
         { id: "documentos", titulo: "Documentos", href: "documentos.html", icone: "documentos" }
     ];
@@ -25,6 +26,7 @@
             painel: "M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z",
             financeiro: "M4 19V5M4 19h16M8 15v-3M12 15V8M16 15v-5",
             agenda: "M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z",
+            producao: "M4 7h16M4 12h16M4 17h10",
             contratos: "M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM14 3v5h5M8 13h8M8 17h5",
             documentos: "M6 3h9l3 3v15H6zM9 12h6M9 16h6"
         };

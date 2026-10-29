@@ -6,6 +6,7 @@ const categoriasRepo = require('../database/repositories/categoriasRepository');
 const produtosRepo = require('../database/repositories/produtosRepository');
 const auth = require('./auth');
 const financeiro = require('./financeiro');
+const producao = require('./producao');
 
 function readJsonBody(req, callback) {
   const chunks = [];
@@ -282,6 +283,11 @@ function handleApi(req, res, pathname, apiDbReady) {
     }
     if (!auth.exigirAdmin(req, res, { csrf: mutacao(req) })) return;
     return handleOrcamentos(req, res, pathname, apiDbReady);
+  }
+
+  if (pathname.startsWith('/api/producao/')) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (producao.handleProducao(req, res, pathname)) return;
   }
 
   if (pathname.startsWith('/api/financeiro/')) {

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produção | Gestão · Candy Li</title>
+    <link rel="stylesheet" href="../../css/gestao.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="gestao-body" data-gestao-pagina="producao">
+    <p class="gestao-bloqueio" id="gestao-bloqueio">Verificando acesso…</p>
+    <div class="gestao-scrim" id="gestao-scrim"></div>
+    <div class="gestao-app" id="gestao-app" hidden>
+        <aside class="gestao-sidebar" id="gestao-sidebar"></aside>
+        <div class="gestao-coluna">
+            <header class="gestao-topo">
+                <button type="button" class="gestao-menu" id="gestao-menu" aria-controls="gestao-sidebar" aria-expanded="false">Menu</button>
+                <div>
+                    <p class="gestao-kicker">Cozinha</p>
+                    <h1>Produção</h1>
+                </div>
+            </header>
+            <main class="gestao-conteudo">
+                <p class="gestao-intro">Fichas dos contratos confirmados. Orçamento sem confirmação não entra na produção, mesmo quando já existe PDF. A lista acompanha os produtos atuais do contrato.</p>
+                <section class="gestao-painel">
+                    <header class="gestao-painel-cabeca">
+                        <div>
+                            <h2>Eventos confirmados</h2>
+                            <p id="producao-estado">Carregando produção…</p>
+                        </div>
+                    </header>
+                    <div class="gestao-tabela-reserva" id="producao-tabela" hidden>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Evento</th>
+                                    <th>Convidados</th>
+                                    <th>Produtos</th>
+                                    <th>Conferência</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="producao-corpo"></tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="gestao-painel" id="producao-detalhe" hidden style="margin-top:0.9rem">
+                    <header class="gestao-painel-cabeca">
+                        <div>
+                            <h2 id="producao-detalhe-titulo">Ficha do evento</h2>
+                            <p id="producao-detalhe-meta"></p>
+                        </div>
+                    </header>
+                    <ul id="producao-detalhe-dados"></ul>
+                    <div id="producao-detalhe-avisos"></div>
+                    <div class="gestao-tabela-reserva">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>Unidade</th>
+                                    <th>Complementar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="producao-detalhe-itens"></tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="gestao-painel" style="margin-top:0.9rem">
+                    <header class="gestao-painel-cabeca">
+                        <div>
+                            <h2>Produção do dia</h2>
+                            <p>Totais da cozinha para a data selecionada, sem somar unidades diferentes.</p>
+                        </div>
+                        <form class="gestao-filtros" id="producao-dia-form">
+                            <label>Data
+                                <input id="producao-data" type="date" required>
+                            </label>
+                            <button type="button" class="gestao-confirmar" id="producao-dia-pdf">Gerar resumo do dia</button>
+                        </form>
+                    </header>
+                    <p id="producao-dia-estado" class="gestao-vazio">Escolha uma data.</p>
+                    <div class="gestao-tabela-reserva" id="producao-dia-tabela" hidden>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Quantidade</th>
+                                    <th>Unidade</th>
+                                </tr>
+                            </thead>
+                            <tbody id="producao-dia-corpo"></tbody>
+                        </table>
+                    </div>
+                    <div id="producao-dia-eventos"></div>
+                    <p class="gestao-mensagem" id="producao-mensagem" hidden></p>
+                </section>
+            </main>
+        </div>
+    </div>
+    <script src="../../js/config.js"></script>
+    <script src="../../js/admin-common.js"></script>
+    <script src="../../js/gestao/shell.js"></script>
+    <script src="../../js/gestao/consulta.js"></script>
+    <script src="../../js/gestao/producao.js"></script>
+</body>
+</html>
