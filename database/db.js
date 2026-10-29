@@ -13,6 +13,24 @@ const DB_PATH = process.env.DATABASE_PATH
   : path.join(DB_DIR, 'database.sqlite');
 const MIGRATIONS_DIR = path.join(DB_DIR, 'migrations');
 
+/**
+ * Migrações nesta lista não rodam no start do servidor.
+ * O teste autoriza uma delas com MIGRACOES_AUTORIZADAS=004_documentos_versoes.sql
+ * e um DATABASE_PATH temporário. Sem essa variável, o banco real permanece intacto.
+ */
+const MIGRACOES_SUSPENSAS = {
+  '004_documentos_versoes.sql': true
+};
+
+function migracaoSuspensa(file) {
+  if (!MIGRACOES_SUSPENSAS[file]) return false;
+  const autorizadas = String(process.env.MIGRACOES_AUTORIZADAS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return autorizadas.indexOf(file) === -1;
+}
+
 function runMigrations(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -31,6 +49,10 @@ function runMigrations(db) {
 
   for (const file of files) {
     if (doneStmt.get(file)) continue;
+    if (migracaoSuspensa(file)) {
+      console.warn('Migração suspensa, não aplicada: ' + file);
+      continue;
+    }
     const full = path.join(MIGRATIONS_DIR, file);
     const sql = fs.readFileSync(full, 'utf8');
     db.exec(sql);

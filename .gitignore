@@ -7,3 +7,4 @@ database/database.sqlite
 database/database.sqlite-wal
 database/database.sqlite-shm
 database/backups/
+storage/

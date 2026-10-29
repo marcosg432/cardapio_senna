@@ -81,6 +81,97 @@ function confirmacaoValida(gestao) {
   );
 }
 
+function falha(codigo) {
+  const erro = new Error(codigo);
+  erro.code = codigo;
+  return erro;
+}
+
+function textoComparavel(valor) {
+  if (valor == null) return '';
+  return String(valor).replace(/\s+/g, ' ').trim();
+}
+
+function numeroComparavel(valor) {
+  if (valor == null || valor === '') return null;
+  const texto = typeof valor === 'number' ? String(valor) : String(valor).trim().replace(',', '.');
+  if (!/^-?\d+(\.\d+)?$/.test(texto)) return 'texto:' + textoComparavel(valor);
+  return Math.round(Number(texto) * 10000) / 10000;
+}
+
+const CAMPOS_TEXTO_CONTRATO = [
+  'data_evento', 'evento_data', 'tipo_evento', 'evento_tipo',
+  'local', 'local_evento', 'evento_local_festa', 'evento_local_cerimonia',
+  'endereco', 'entrega', 'entrega_retirada', 'entrega_suporte',
+  'evento_horario_entrega', 'evento_horario_festa',
+  'forma_pagamento', 'forma_pagamento_ref', 'pagamento', 'desconto_tipo',
+  'data_pagamento_entrada', 'data_pagamento_entrada_prevista', 'data_pagamento_final',
+  'nome_cliente', 'cliente', 'cliente_cpf', 'cpf', 'cliente_rg', 'rg', 'cliente_endereco_linha'
+];
+
+const CAMPOS_NUMERO_CONTRATO = [
+  'convidados', 'taxa_entrega', 'desconto_valor', 'desconto_cerimonialista',
+  'desconto_degustacao', 'valor_desconto', 'valor_original', 'total', 'valor_final',
+  'entrada', 'restante'
+];
+
+function itemContratual(item) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return { invalido: true };
+  return {
+    nome: textoComparavel(item.nome),
+    quantidade: numeroComparavel(item.quantidade),
+    unidade: textoComparavel(item.unidade),
+    preco: numeroComparavel(item.preco),
+    preco_unitario: numeroComparavel(item.preco_unitario),
+    subtotal: numeroComparavel(item.subtotal),
+    complementar: item.extra_pedido_admin === true
+  };
+}
+
+function listaContratual(itens) {
+  return (Array.isArray(itens) ? itens : []).map(itemContratual);
+}
+
+function blocoContratual(orcamento) {
+  const bloco = { itens: listaContratual(orcamento && orcamento.itens) };
+  CAMPOS_TEXTO_CONTRATO.forEach((campo) => {
+    bloco[campo] = textoComparavel(orcamento && orcamento[campo]);
+  });
+  CAMPOS_NUMERO_CONTRATO.forEach((campo) => {
+    bloco[campo] = numeroComparavel(orcamento && orcamento[campo]);
+  });
+  const contrato = orcamento && orcamento.contrato;
+  bloco.contrato = !contrato || typeof contrato !== 'object' ? null : {
+    status: textoComparavel(contrato.status),
+    valor_final: numeroComparavel(contrato.valor_final),
+    data_contrato: textoComparavel(contrato.data_contrato)
+  };
+  const pdf = orcamento && orcamento.contrato_pdf;
+  bloco.contrato_pdf = !pdf || typeof pdf !== 'object' ? null : {
+    tipo: textoComparavel(pdf.tipo),
+    gerado_em: textoComparavel(pdf.gerado_em)
+  };
+  return bloco;
+}
+
+function gestaoRecebida(valor) {
+  if (!valor || typeof valor !== 'object') return null;
+  return {
+    status: textoComparavel(valor.status),
+    confirmado_em: textoComparavel(valor.confirmado_em)
+  };
+}
+
+function alteracaoProibida(atual, proposto, patch) {
+  if (!confirmacaoValida(atual && atual.gestao_contrato)) return false;
+  if (Object.prototype.hasOwnProperty.call(patch || {}, 'gestao_contrato')) {
+    const recebida = gestaoRecebida(patch.gestao_contrato);
+    const guardada = gestaoRecebida(atual.gestao_contrato);
+    if (JSON.stringify(recebida) !== JSON.stringify(guardada)) return true;
+  }
+  return JSON.stringify(blocoContratual(atual)) !== JSON.stringify(blocoContratual(proposto));
+}
+
 function copiarConfirmacao(origem) {
   if (!confirmacaoValida(origem && origem.gestao_contrato)) return null;
   return {
@@ -107,21 +198,23 @@ function inserir(obj) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(id);
-    if (row) aplicarConfirmacaoPreservada(JSON.parse(row.payload), obj);
-    else delete obj.gestao_contrato;
+    if (row) {
+      db.exec('ROLLBACK');
+      throw falha('existente');
+    }
+    delete obj.gestao_contrato;
     const payload = JSON.stringify(obj);
     const now = new Date().toISOString();
     const created = obj.data_criacao || obj.data || now;
     db.prepare(`
       INSERT INTO orcamentos (id, payload, created_at, updated_at)
       VALUES (?, ?, ?, ?)
-      ON CONFLICT(id) DO UPDATE SET
-        payload = excluded.payload,
-        updated_at = excluded.updated_at
     `).run(id, payload, created, now);
     db.exec('COMMIT');
   } catch (e) {
     try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    if (e && e.code === 'existente') throw e;
+    if (e && /UNIQUE/i.test(String(e.message || ''))) throw falha('existente');
     throw e;
   }
   return buscarPorId(id);
@@ -141,6 +234,10 @@ function atualizar(id, patch) {
     const atual = JSON.parse(row.payload);
     const merged = Object.assign({}, atual, patch || {});
     merged.id = numero;
+    if (alteracaoProibida(atual, merged, patch || {})) {
+      db.exec('ROLLBACK');
+      throw falha('confirmado');
+    }
     aplicarConfirmacaoPreservada(atual, merged);
     stripMetadadosPayloadPersistencia(merged);
     const errQtd = validarQuantidadesItensOrcamento(merged);
@@ -169,8 +266,14 @@ function substituir(obj) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(id);
-    if (row) aplicarConfirmacaoPreservada(JSON.parse(row.payload), obj);
-    else delete obj.gestao_contrato;
+    if (row) {
+      const atual = JSON.parse(row.payload);
+      if (alteracaoProibida(atual, obj, obj)) {
+        db.exec('ROLLBACK');
+        throw falha('confirmado');
+      }
+      aplicarConfirmacaoPreservada(atual, obj);
+    } else delete obj.gestao_contrato;
     const now = new Date().toISOString();
     const payload = JSON.stringify(obj);
     const created = obj.data_criacao || obj.data || now;
