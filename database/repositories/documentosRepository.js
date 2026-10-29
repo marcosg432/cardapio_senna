@@ -65,7 +65,19 @@ function arquivoPdf(relativo) {
   const cheio = path.resolve(base, relativo);
   const rel = path.relative(base, cheio);
   if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
-  return cheio;
+  if (!fs.existsSync(cheio)) return cheio;
+  let baseReal;
+  let arquivoReal;
+  try {
+    baseReal = fs.realpathSync(base);
+    arquivoReal = fs.realpathSync(cheio);
+  } catch (e) {
+    return null;
+  }
+  const dentro = path.relative(baseReal, arquivoReal);
+  if (!dentro || dentro.startsWith('..') || path.isAbsolute(dentro)) return null;
+  if (!/^\d+[\\/]\d+\.pdf$/.test(dentro)) return null;
+  return arquivoReal;
 }
 
 function publicoDocumento(row) {

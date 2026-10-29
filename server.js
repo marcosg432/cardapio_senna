@@ -40,7 +40,7 @@ const MIME_TYPES = {
 
 const ROOT = process.cwd();
 
-const PASTAS_INTERNAS = ['database', 'server', 'scripts', 'node_modules'];
+const PASTAS_INTERNAS = ['database', 'server', 'scripts', 'node_modules', 'storage'];
 
 function urlPermitida(urlPath) {
   let texto = String(urlPath || '/');
@@ -55,8 +55,7 @@ function urlPermitida(urlPath) {
   if (partes.some((p) => p === '.' || p === '..' || p.charAt(0) === '.')) return false;
   if (partes.length && PASTAS_INTERNAS.indexOf(partes[0]) !== -1) return false;
   const nome = partes.length ? partes[partes.length - 1] : '';
-  if (nome.endsWith('.sqlite') || nome.endsWith('.sqlite-wal') || nome.endsWith('.sqlite-shm')) return false;
-  if (nome === '.env' || nome.indexOf('.env.') === 0) return false;
+  if (nomePrivado(nome)) return false;
   return true;
 }
 
@@ -68,9 +67,33 @@ function arquivoProibido(filePath) {
   if (PASTAS_INTERNAS.indexOf(partes[0].toLowerCase()) !== -1) return true;
   if (partes.some((p) => p.charAt(0) === '.')) return true;
   const nome = partes[partes.length - 1].toLowerCase();
+  if (nomePrivado(nome)) return true;
+  return false;
+}
+
+function nomePrivado(nome) {
   if (nome.endsWith('.sqlite') || nome.endsWith('.sqlite-wal') || nome.endsWith('.sqlite-shm')) return true;
+  if (nome.endsWith('.bak') || nome.endsWith('.tmp') || nome.endsWith('.temp') || nome.endsWith('~')) return true;
   if (nome === '.env' || nome.indexOf('.env.') === 0) return true;
   return false;
+}
+
+function caminhoRealSeguro(filePath) {
+  let real;
+  try {
+    real = fs.realpathSync(filePath);
+  } catch (e) {
+    return null;
+  }
+  const rootReal = fs.realpathSync(ROOT);
+  const rel = path.relative(rootReal, real);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  const partes = rel.split(/[\\/]/).filter(Boolean);
+  if (!partes.length) return null;
+  if (PASTAS_INTERNAS.indexOf(partes[0].toLowerCase()) !== -1) return null;
+  if (partes.some((p) => p.charAt(0) === '.')) return null;
+  if (nomePrivado(partes[partes.length - 1].toLowerCase())) return null;
+  return real;
 }
 
 function resolveFilePath(urlPathname) {
@@ -85,7 +108,13 @@ function resolveFilePath(urlPathname) {
 }
 
 function sendFile(res, filePath, extraHeaders) {
-  fs.readFile(filePath, (err, content) => {
+  const real = caminhoRealSeguro(filePath);
+  if (!real) {
+    res.writeHead(404, { 'Cache-Control': 'no-store' });
+    res.end('Arquivo não encontrado');
+    return;
+  }
+  fs.readFile(real, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
         res.writeHead(404);
