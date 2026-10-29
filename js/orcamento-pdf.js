@@ -8,6 +8,10 @@ function formatarMoedaOrcPdf(n) {
 }
 
 function gerarOrcamentoPropostaPDF(orcamento) {
+    if (typeof window !== "undefined" && window.document) {
+        alert("O PDF oficial do orçamento é gerado pelo servidor. Nenhum arquivo local foi criado.");
+        return;
+    }
     if (typeof window.jspdf === "undefined") {
         alert("Biblioteca de PDF não carregada.");
         return;

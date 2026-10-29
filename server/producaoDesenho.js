@@ -131,17 +131,58 @@
 
         var total = doc.getNumberOfPages();
         var i;
+        var rodape = opcoes && opcoes.congelado
+            ? 'Os produtos correspondem à lista congelada nesta versão.'
+            : 'Os produtos correspondem à lista atual do contrato confirmado.';
         for (i = 1; i <= total; i++) {
             doc.setPage(i);
             doc.setDrawColor(LINHA[0], LINHA[1], LINHA[2]);
             doc.line(margem, 282, margem + largura, 282);
-            texto('Os produtos correspondem à lista atual do contrato confirmado.', margem, 287, 8, 'normal', PE, 'left', 140);
+            texto(rodape, margem, 287, 8, 'normal', PE, 'left', 140);
             texto('Página ' + i + ' de ' + total, 194, 287, 8, 'normal', PE, 'right');
+            if (opcoes && opcoes.rascunho) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(42);
+                doc.setTextColor(176, 122, 132);
+                doc.text('RASCUNHO', 105, 168, { align: 'center', angle: 32 });
+            }
         }
         return {
             paginas: total,
             pdf: opcoes && (opcoes.auditoria || opcoes.bytes) ? doc.output('arraybuffer') : null
         };
+    }
+
+    function instrucoes(ctx, operacional) {
+        if (!operacional) return;
+        var pares = [
+            ['Responsável', operacional.responsavel],
+            ['Preparo', operacional.preparo],
+            ['Observações', operacional.observacoes],
+            ['Montagem', operacional.montagem],
+            ['Embalagem', operacional.embalagem],
+            ['Orientações', operacional.orientacoes]
+        ].filter(function (par) { return par[1]; });
+        var etapas = Array.isArray(operacional.etapas) ? operacional.etapas.filter(function (etapa) {
+            return etapa && (etapa.titulo || etapa.detalhe);
+        }) : [];
+        if (!pares.length && !etapas.length) return;
+        ctx.garantir(10);
+        ctx.texto('Instruções operacionais', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+        ctx.avancar(6);
+        pares.forEach(function (par) {
+            ctx.garantir(6);
+            ctx.texto(par[0], ctx.margem, ctx.posicao(), 8, 'bold', ctx.cores.mudo);
+            ctx.avancar(4);
+            ctx.texto(String(par[1]), ctx.margem, ctx.posicao(), 10, 'normal', ctx.cores.tinta, 'left', ctx.largura);
+            ctx.avancar(6);
+        });
+        etapas.forEach(function (etapa) {
+            ctx.garantir(6);
+            var linhaEtapa = (etapa.titulo || 'Etapa') + (etapa.detalhe ? ' — ' + etapa.detalhe : '');
+            ctx.texto(linhaEtapa, ctx.margem, ctx.posicao(), 9, 'normal', ctx.cores.tinta, 'left', ctx.largura);
+            ctx.avancar(5);
+        });
     }
 
     function linhaEvento(ctx, rotulo, valor) {
@@ -202,6 +243,7 @@
             } else {
                 ctx.tabela(colunas, linhas);
             }
+            instrucoes(ctx, evento.operacional);
             ctx.garantir(24);
             ctx.texto('Conferência da cozinha', ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
             ctx.avancar(7);
@@ -274,6 +316,7 @@
                     ], linhas);
                 }
             });
+            instrucoes(ctx, dia.operacional);
         });
         return {
             arquivo: 'producao-dia-' + dia.data + '.pdf',

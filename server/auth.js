@@ -334,6 +334,7 @@ module.exports = {
   SESSION_MS,
   handleAuth,
   exigirAdmin,
+  resolverSessao,
   temSessaoValida,
   origemConfiavel,
   criarAdministrador,

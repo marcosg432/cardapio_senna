@@ -810,6 +810,8 @@
         }
 
         orcamentoAtual = o;
+        var historicoPdf = document.getElementById("btn-historico-pdf");
+        if (historicoPdf) historicoPdf.href = "gestao/documentos.html?q=" + encodeURIComponent(o.id);
         document.getElementById("admin-detalhe-erro").hidden = true;
         document.getElementById("admin-detalhe-conteudo").hidden = false;
         renderOrcamento(o);
@@ -898,17 +900,37 @@
             window.open("https://wa.me/" + tel + "?text=" + encodeURIComponent(msg), "_blank");
         });
 
+        function baixarPdfDoServidor(caminho, nome) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", caminho, true);
+            xhr.withCredentials = true;
+            xhr.responseType = "blob";
+            xhr.onload = function () {
+                if (xhr.status !== 200) {
+                    alert("O servidor não gerou o PDF oficial.");
+                    return;
+                }
+                var url = URL.createObjectURL(xhr.response);
+                var link = document.createElement("a");
+                link.href = url;
+                link.download = nome;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+            };
+            xhr.onerror = function () {
+                alert("O servidor não gerou o PDF oficial.");
+            };
+            xhr.send();
+        }
+
         document.getElementById("btn-pdf-orcamento").addEventListener("click", function () {
             if (document.activeElement && typeof document.activeElement.blur === "function") {
                 document.activeElement.blur();
             }
-            var patch = patchComumExtra();
-            var base = getOrcamentoPorId(orcamentoAtual.id);
-            /* Mesma lógica do contrato: patch traz sempre itens atuais e totais corretos */
-            var dadosProposta =
-                Object.assign({}, base || orcamentoAtual, patch);
-            dadosProposta.itens = patch.itens ? patch.itens : dadosProposta.itens || [];
-            gerarOrcamentoPropostaPDF(dadosProposta);
+            var idPdf = orcamentoAtual.id;
+            baixarPdfDoServidor("/api/orcamentos/" + encodeURIComponent(idPdf) + "/proposta.pdf", "orcamento-" + idPdf + ".pdf");
         });
 
         document.getElementById("btn-contrato").addEventListener("click", function () {
@@ -963,41 +985,19 @@
                 status: stContrato || "contrato_gerado"
             });
 
-            var salvo = atualizarOrcamentoParcial(oid, patchContrato);
-            /* Alguns navegadores só atualizam o .value ao perder foco (tel/e-mail): consolida antes do PDF */
-            if (document.activeElement && typeof document.activeElement.blur === "function") {
-                document.activeElement.blur();
+            var respostaContrato = apiRequestSync("PATCH", "/api/orcamentos/" + encodeURIComponent(oid), patchContrato);
+            if (!respostaContrato.ok) {
+                var textoRecusa = "O servidor não aceitou a alteração. Nenhum PDF oficial foi gerado.";
+                try {
+                    var corpoRecusa = JSON.parse(respostaContrato.body || "");
+                    if (corpoRecusa && corpoRecusa.erro) textoRecusa = corpoRecusa.erro + " Nenhum PDF oficial foi gerado.";
+                } catch (e) { /* resposta sem JSON */ }
+                alert(textoRecusa);
+                return;
             }
-            var dadosPdf = salvo &&
-                Array.isArray(salvo.itens) &&
-                salvo.itens.length === itensContrato.length
-                ? salvo
-                : Object.assign({}, orcamentoAtual, patchContrato);
-            /* Tudo que está nos campos #contrato-* / #contrato-pdf-* do anexo sobrepõe o objeto do servidor antes do PDF */
-            var anexoDoForm = patchCamposAnexoPdf();
-            dadosPdf = Object.assign({}, dadosPdf, anexoDoForm);
-            dadosPdf.observacoes = observacoesOrcamentoAtual() || dadosPdf.observacoes || null;
-            dadosPdf.observacoes_internas = observacoesInternasAtual() || dadosPdf.observacoes_internas || null;
-            /* Se não bater com o servidor, o PDF mesmo assim sai certo pelo merge local */
-
-            gerarContratoPDF(dadosPdf);
-            /* Evita regressão: não substituir memória só por uma leitura que possa estar desatualizada */
-            if (salvo &&
-                salvo.itens &&
-                salvo.itens.length === itensContrato.length) {
-                /* PATCH pode devolver objeto sem campos opcionais do anexo; manter o que foi lido do formulário (#contrato-*) */
-                orcamentoAtual = Object.assign({}, salvo, anexoDoForm);
-            } else {
-                if (salvo && salvo.itens && salvo.itens.length !== itensContrato.length) {
-                    console.warn(
-                        "[admin] Lista de itens devolvida após PATCH diverge do ecrã. A manter dados mesclados com o último PATCH."
-                    );
-                }
-                orcamentoAtual = dadosPdf;
-                atualizarOrcamentoParcial(oid, patchContrato);
-            }
+            orcamentoAtual = JSON.parse(respostaContrato.body);
             renderOrcamento(orcamentoAtual);
-            alert("Contrato PDF gerado.");
+            baixarPdfDoServidor("/api/orcamentos/" + encodeURIComponent(oid) + "/contrato.pdf", "contrato-" + oid + ".pdf");
         });
 
         document.getElementById("btn-salvar-anexo-contrato").addEventListener("click", function () {

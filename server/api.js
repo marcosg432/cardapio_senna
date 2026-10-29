@@ -7,6 +7,9 @@ const produtosRepo = require('../database/repositories/produtosRepository');
 const auth = require('./auth');
 const financeiro = require('./financeiro');
 const producao = require('./producao');
+const documentosApi = require('./documentos');
+const propostaOficial = require('./propostaOficial');
+const documentoPdf = require('./documentoPdf');
 
 function readJsonBody(req, callback) {
   const chunks = [];
@@ -34,6 +37,13 @@ function sendJson(res, status, obj) {
     'Cache-Control': 'no-store'
   });
   res.end(body);
+}
+
+function erroOrcamento(e) {
+  if (e && e.code === 'existente') return { status: 409, body: { erro: 'Orçamento já cadastrado.' } };
+  if (e && e.code === 'confirmado') return { status: 409, body: { erro: 'Contrato confirmado. Esta alteração precisa de revisão.' } };
+  if (e && e.code === 'id') return { status: 400, body: { erro: 'Identificador inválido.' } };
+  return { status: 400, body: { error: String(e && e.message || 'Não foi possível salvar o orçamento.') } };
 }
 
 function matchOrcamentos(pathname) {
@@ -78,7 +88,8 @@ function handleOrcamentos(req, res, pathname, apiDbReady) {
             const saved = orcamentosRepo.inserir(body);
             sendJson(res, 201, saved);
           } catch (e) {
-            sendJson(res, 400, { error: String(e.message || e) });
+            const falha = erroOrcamento(e);
+            sendJson(res, falha.status, falha.body);
           }
         });
         return;
@@ -98,7 +109,8 @@ function handleOrcamentos(req, res, pathname, apiDbReady) {
             if (!saved) return sendJson(res, 404, { error: 'Orçamento não encontrado' });
             return sendJson(res, 200, saved);
           } catch (e) {
-            return sendJson(res, 400, { error: String(e.message || e) });
+            const falha = erroOrcamento(e);
+            return sendJson(res, falha.status, falha.body);
           }
         });
         return;
@@ -114,7 +126,8 @@ function handleOrcamentos(req, res, pathname, apiDbReady) {
             const saved = orcamentosRepo.substituir(body);
             return sendJson(res, 200, saved);
           } catch (e) {
-            return sendJson(res, 400, { error: String(e.message || e) });
+            const falha = erroOrcamento(e);
+            return sendJson(res, falha.status, falha.body);
           }
         });
         return;
@@ -274,6 +287,39 @@ function handleApi(req, res, pathname, apiDbReady) {
     return confirmarContrato(req, res, confirmar[1]);
   }
 
+  const pdfComercial = pathname.match(/^\/api\/orcamentos\/(\d+)\/(proposta|contrato)\.pdf\/?$/);
+  if (pdfComercial) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { erro: 'Método não permitido' });
+    if (!auth.exigirAdmin(req, res, { csrf: false })) return;
+    const orcamento = orcamentosRepo.buscarPorId(pdfComercial[1]);
+    if (!orcamento) return sendJson(res, 404, { erro: 'Orçamento não encontrado.' });
+    const tipo = pdfComercial[2] === 'contrato' ? 'contrato' : 'orcamento';
+    let geracaoPdf;
+    try {
+      geracaoPdf = documentoPdf.gerar(tipo, {
+        proposta: propostaOficial.montar(orcamento),
+        revisao_texto: ''
+      }, { rascunho: false });
+    } catch (e) {
+      return sendJson(res, 500, { erro: 'Não foi possível gerar o PDF oficial.' });
+    }
+    Promise.resolve(geracaoPdf).then((gerado) => {
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="' + gerado.arquivo + '"',
+        'Content-Length': gerado.buffer.length,
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      if (req.method === 'HEAD') res.end();
+      else res.end(gerado.buffer);
+    }).catch(() => {
+      sendJson(res, 500, { erro: 'Não foi possível gerar o PDF oficial.' });
+    });
+    return;
+  }
+
   if (pathname.startsWith('/api/orcamentos')) {
     const colecao = pathname === '/api/orcamentos' || pathname === '/api/orcamentos/';
     const envioPublico = colecao && req.method === 'POST';
@@ -283,6 +329,11 @@ function handleApi(req, res, pathname, apiDbReady) {
     }
     if (!auth.exigirAdmin(req, res, { csrf: mutacao(req) })) return;
     return handleOrcamentos(req, res, pathname, apiDbReady);
+  }
+
+  if (pathname.startsWith('/api/documentos')) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (documentosApi.handleDocumentos(req, res, pathname)) return;
   }
 
   if (pathname.startsWith('/api/producao/')) {

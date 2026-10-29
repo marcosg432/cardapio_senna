@@ -101,7 +101,8 @@
             pendente_centavos: pendente,
             historico: historico,
             emissao: emissao,
-            situacao: situacao
+            situacao: situacao,
+            observacao: String(origem.observacao || "").replace(/\s+/g, " ").trim()
         };
     }
 
@@ -219,7 +220,20 @@
         });
         y += 28;
         texto("Situação: " + dados.situacao, margem, y, 11, "bold", [18, 31, 42]);
-        y += 10;
+        y += 8;
+        if (dados.observacao) {
+            garantir(16);
+            texto("Nota de apresentação", margem, y, 11, "bold", [18, 31, 42]);
+            y += 5;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            var notaLinhas = doc.splitTextToSize(dados.observacao, largura);
+            doc.setTextColor(28, 36, 48);
+            doc.text(notaLinhas, margem, y);
+            y += notaLinhas.length * 5 + 4;
+        } else {
+            y += 2;
+        }
 
         texto("Histórico de pagamentos", margem, y, 12, "bold", [18, 31, 42]);
         y += 4;
@@ -255,6 +269,12 @@
             doc.line(margem, 282, margem + largura, 282);
             texto("Este demonstrativo apresenta os pagamentos registrados no sistema até a data de emissão.", margem, 287, 8, "normal", [125, 136, 146], "left", 140);
             texto("Página " + i + " de " + total, 194, 287, 8, "normal", [125, 136, 146], "right");
+            if (opcoes && opcoes.rascunho) {
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(42);
+                doc.setTextColor(176, 122, 132);
+                doc.text("RASCUNHO", 105, 168, { align: "center", angle: 32 });
+            }
         }
 
         var arquivo = "demonstrativo-financeiro-" + dados.id + ".pdf";

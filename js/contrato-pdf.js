@@ -387,20 +387,24 @@ function desenharAssinaturasContratoPdf(ctx) {
 
     legenda(xCliente, ["Assinatura do(a) CONTRATANTE", nomeCliente]);
 
-    if (assinatura && assinatura.dataUrl && assinatura.width && assinatura.height) {
-        var largMax = colW - 18;
-        var altMax = Math.max(8, yLinha - yCaixa - 10);
-        var ratio = assinatura.width / assinatura.height;
-        var largAss = largMax;
-        var altAss = largAss / ratio;
-        if (altAss > altMax) {
-            altAss = altMax;
-            largAss = altAss * ratio;
-        }
-        var xImg = xContratada + (colW - largAss) / 2;
-        var yImg = yCaixa + 4;
-        doc.addImage(assinatura.dataUrl, "PNG", xImg, yImg, largAss, altAss);
+    if (!assinatura || !assinatura.dataUrl || !(assinatura.width > 0) || !(assinatura.height > 0)) {
+        throw new Error("assinatura");
     }
+    if (assinatura.formato !== "PNG" && assinatura.formato !== "JPEG") {
+        throw new Error("assinatura");
+    }
+    var largMax = colW - 18;
+    var altMax = Math.max(8, yLinha - yCaixa - 10);
+    var ratio = assinatura.width / assinatura.height;
+    var largAss = largMax;
+    var altAss = largAss / ratio;
+    if (altAss > altMax) {
+        altAss = altMax;
+        largAss = altAss * ratio;
+    }
+    var xImg = xContratada + (colW - largAss) / 2;
+    var yImg = yCaixa + 4;
+    doc.addImage(assinatura.dataUrl, assinatura.formato, xImg, yImg, largAss, altAss);
 
     var nomeLinha = nomeContratada || "";
     if (empresa && empresa !== nomeContratada) {
@@ -413,6 +417,10 @@ function desenharAssinaturasContratoPdf(ctx) {
 }
 
 function gerarContratoPDF(orcamento) {
+    if (typeof window !== "undefined" && window.document) {
+        alert("O PDF oficial do contrato é gerado pelo servidor. Se a alteração foi recusada, nenhum arquivo oficial é criado.");
+        return;
+    }
     if (typeof window.jspdf === "undefined") {
         alert("Biblioteca de PDF não carregada.");
         return;
@@ -555,7 +563,7 @@ function gerarContratoPDF(orcamento) {
             ? String(cfg.contratoAssinaturaRelPath).trim()
             : "assets/assinatura-contratada.png";
 
-    carregarImagemParaPdf(resolverUrlAssetSite(assinaturaPath)).then(function (assinatura) {
+    return carregarImagemParaPdf(resolverUrlAssetSite(assinaturaPath)).then(function (assinatura) {
         desenharAssinaturasContratoPdf({
             doc: doc,
             y: y,

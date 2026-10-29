@@ -45,4 +45,9 @@ function emitir(id) {
   };
 }
 
-module.exports = { emitir };
+function desenhar(origem, opcoes) {
+  const documento = gerador()(origem, opcoes || { baixar: false, bytes: true });
+  return Buffer.from(documento.pdf);
+}
+
+module.exports = { emitir, desenhar };

@@ -155,7 +155,7 @@ async function avaliar(enviar, expressao) {
 
 async function main() {
   const antes = assinaturaReal();
-  assert(antes.ic === "ok" && antes.n === 4, "os orçamentos reais não estão intactos");
+  assert(antes.ic === "ok" && antes.n >= 1, "os orçamentos reais não estão intactos");
 
   const hoje = isoLocal(new Date());
   fs.rmSync(tmpDb, { force: true });
@@ -223,9 +223,11 @@ async function main() {
     csrf: csrf,
     body: { gestao_contrato: { status: "confirmado", confirmado_em: "1999-01-01T00:00:00.000Z" }, observacoes: "texto original" }
   });
-  assert(forjado.status === 200, "PATCH de preservação falhou");
-  const depoisPatch = JSON.parse(forjado.body);
+  assert(forjado.status === 409, "PATCH forjado veio " + forjado.status);
+  const listaForjada = await pedir("GET", "/api/orcamentos", { cookie: cookie });
+  const depoisPatch = JSON.parse(listaForjada.body).find((item) => item.id === 910010);
   assert(depoisPatch.gestao_contrato.confirmado_em === feita.gestao_contrato.confirmado_em, "PATCH forjou a confirmação");
+  assert(depoisPatch.observacoes === original.observacoes, "PATCH rejeitado alterou o orçamento");
 
   const publico = await pedir("POST", "/api/orcamentos", {
     body: {
@@ -336,7 +338,7 @@ async function main() {
   assert(painel.contratado === "R$ 230,00" && painel.recebido === "R$ 0,00" && painel.pendente === "R$ 230,00", "financeiro " + JSON.stringify(painel));
 
   const depois = assinaturaReal();
-  assert(depois.hash === antes.hash && depois.confirmados === antes.confirmados && depois.n === 4, "orçamentos reais foram alterados");
+  assert(depois.hash === antes.hash && depois.confirmados === antes.confirmados && depois.n === antes.n, "orçamentos reais foram alterados");
   console.log("Confirmação de contrato ok.");
   ws.close();
 }

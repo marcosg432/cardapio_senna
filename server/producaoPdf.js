@@ -33,4 +33,19 @@ function emitirDia(iso) {
   return { status: 200, arquivo: documento.arquivo, buffer: Buffer.from(documento.pdf) };
 }
 
-module.exports = { emitirEvento: emitirEvento, emitirDia: emitirDia };
+function desenharEvento(evento, opcoes) {
+  const documento = geradores().ficha(evento, opcoes || { baixar: false, bytes: true });
+  return Buffer.from(documento.pdf);
+}
+
+function desenharDia(dia, opcoes) {
+  const documento = geradores().dia(dia, opcoes || { baixar: false, bytes: true });
+  return Buffer.from(documento.pdf);
+}
+
+module.exports = {
+  emitirEvento: emitirEvento,
+  emitirDia: emitirDia,
+  desenharEvento: desenharEvento,
+  desenharDia: desenharDia
+};
