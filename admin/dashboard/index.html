@@ -66,11 +66,21 @@
                 if (av && (location.protocol === "file:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
                     av.style.display = "block";
                     av.textContent = location.protocol === "file:"
-                        ? "Use http://localhost (npx serve) para o site e o admin — file:// não compartilha orçamentos com esta página."
-                        : "Use o mesmo host (só localhost ou só 127.0.0.1) no cardápio e aqui; cada um guarda dados separados.";
+                        ? "Abra o site e o painel pelo servidor local. Os orçamentos ficam no banco do servidor."
+                        : "Os orçamentos ficam no servidor. Entre sempre pelo mesmo endereço, localhost ou 127.0.0.1, para a sessão de login ser reconhecida.";
+                }
+                var lista = listarOrcamentos();
+                if (typeof consultaOrcamentosFalhou === "function" && consultaOrcamentosFalhou()) {
+                    if (av) {
+                        av.style.display = "block";
+                        av.style.background = "#fff8e6";
+                        av.style.borderColor = "#e6c200";
+                        av.textContent = "Não foi possível consultar os orçamentos no servidor.";
+                    }
+                    document.getElementById("dashboard-conteudo").hidden = true;
+                    return;
                 }
                 document.getElementById("dashboard-conteudo").hidden = false;
-                var lista = listarOrcamentos();
                 var total = lista.length;
 
                 var emDeg = 0;

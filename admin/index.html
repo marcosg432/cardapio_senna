@@ -35,7 +35,7 @@
             <div id="admin-storage-aviso" class="admin-card" style="display:none;background:#fff8e6;border:1px solid #e6c200;font-size:0.88rem;line-height:1.5;margin-bottom:1rem"></div>
             <div class="admin-card">
                 <h1>Lista de orçamentos</h1>
-                <p style="font-size:0.9rem;opacity:0.85">Os dados ficam neste navegador (localStorage), na mesma “origem” do cardápio. Para produção com equipe, use PostgreSQL + API ou Supabase.</p>
+                <p style="font-size:0.9rem;opacity:0.85">Os orçamentos ficam no servidor. Esta lista, a gestão, a agenda, o financeiro e a produção consultam o mesmo banco.</p>
 
                 <div class="admin-busca" id="admin-busca" hidden>
                     <div class="admin-busca-linha">
@@ -92,14 +92,14 @@
                 if (!box) return;
                 if (location.protocol === 'file:') {
                     box.style.display = 'block';
-                    box.textContent = 'Abra o cardápio e este painel pelo mesmo servidor local (ex.: na pasta do projeto rode "npx serve ." e use só http://localhost:PORTA). Abrir o HTML direto pelo disco (file://) isola os dados: os orçamentos gerados no site não aparecerão aqui.';
+                    box.textContent = 'Abra o site e este painel pelo servidor local. Os orçamentos ficam no banco do servidor; abrir o arquivo pelo disco não grava nem lista esses orçamentos.';
                     return;
                 }
                 if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
                     box.style.display = 'block';
                     box.style.background = '#eef6ff';
                     box.style.borderColor = '#90caf9';
-                    box.textContent = 'Use o mesmo host para tudo: se o cardápio está em http://localhost:..., abra o admin também em http://localhost:... (não misture com http://127.0.0.1:...). Cada combinação guarda um localStorage separado.';
+                    box.textContent = 'Os orçamentos ficam no servidor. Entre sempre pelo mesmo endereço, localhost ou 127.0.0.1, para a sessão de login ser reconhecida.';
                 }
             }
 
@@ -113,13 +113,6 @@
                 }
                 renderTabela();
             }
-
-            window.addEventListener('storage', function (ev) {
-                if (!ev.key) return;
-                if (ev.key !== 'orcamentos' && ev.key.indexOf('orcamentos_') !== 0) return;
-                var mainEl = document.getElementById('admin-main');
-                if (mainEl && !mainEl.hidden) renderTabela();
-            });
 
             function normalizarTextoBusca(s) {
                 return String(s || '')
@@ -234,6 +227,19 @@
 
             function renderTabela() {
                 var lista = listarOrcamentos();
+                var aviso = document.getElementById('admin-storage-aviso');
+                if (typeof consultaOrcamentosFalhou === 'function' && consultaOrcamentosFalhou()) {
+                    if (aviso) {
+                        aviso.style.display = 'block';
+                        aviso.style.background = '#fff8e6';
+                        aviso.style.borderColor = '#e6c200';
+                        aviso.textContent = 'Não foi possível consultar os orçamentos no servidor. Nada desta lista foi lido do navegador.';
+                    }
+                    document.getElementById('sem-orcamentos').hidden = true;
+                    document.getElementById('sem-resultados-busca').hidden = true;
+                    document.getElementById('tabela-orcamentos').hidden = true;
+                    return;
+                }
                 var filtrada = filtrarLista(lista);
                 var tbody = document.getElementById('tbody-orcamentos');
                 var vazio = document.getElementById('sem-orcamentos');

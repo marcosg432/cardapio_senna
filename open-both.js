@@ -1,5 +1,5 @@
 /**
- * Abre o cardápio e o admin no mesmo host/porta (mesmo localStorage).
+ * Abre o cardápio e o admin no mesmo host e na mesma porta.
  * Uso: npm run open:all   (com servidor já em execução: npm start)
  */
 const { execSync } = require('child_process');

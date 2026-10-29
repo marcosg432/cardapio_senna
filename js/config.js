@@ -6,8 +6,8 @@ const CONFIG = {
     /** Número do WhatsApp com DDD (ex: 5519981178167) */
     telefoneWhatsApp: "5519981178167",
     /**
-     * Slug estável para chaves de localStorage/sessão (carrinho, orçamentos legado, admin).
-     * Não altere após deploy se quiser manter dados já gravados no navegador.
+     * Slug estável da chave do carrinho neste navegador.
+     * Não altere após deploy se quiser manter o carrinho já gravado.
      */
     storageId: "senna_doce",
     /** Nome da confeitaria exibido no site, PDFs, WhatsApp e admin */

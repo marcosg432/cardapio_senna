@@ -2,7 +2,7 @@
  * Servidor estático + API SQLite local - Candy Li Doces Finos
  * Requer Node.js ≥ 22.13 (módulo nativo node:sqlite; sem MySQL e sem dependência npm do BD).
  *
- * Use sempre esta origem para site + /admin (mesmo localStorage):
+ * Use sempre esta origem para site e /admin:
  *   http://localhost:3003/
  *   http://localhost:3003/admin/
  *
@@ -188,7 +188,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Candy Li Doces Finos — use esta origem para site e admin (mesmo localStorage):`);
+  console.log(`Candy Li Doces Finos — use esta origem para o site e o admin:`);
   console.log(`  http://localhost:${PORT}/`);
   console.log(`  http://localhost:${PORT}/admin/`);
   if (apiDbReady) {

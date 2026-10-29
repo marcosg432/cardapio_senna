@@ -1,6 +1,6 @@
 /**
  * pedido.js — Geração de orçamento (carrinho + dados do evento) e aviso por WhatsApp
- * Ordem: montar objeto → salvar em localStorage ("orcamentos") → WhatsApp → limpar carrinho → UI
+ * Ordem: montar objeto → gravar no SQLite do servidor → WhatsApp → limpar carrinho → UI
  */
 
 function qtdMinDoItemCarrinho(item) {
@@ -284,8 +284,8 @@ function gerarOrcamento() {
             throw new Error("criarOrcamento não disponível (orcamentos-storage.js).");
         }
         var salvo = criarOrcamento(registro);
-        if (salvo && salvo.__salvoSomenteLocalEm) {
-            throw new Error("Orçamento salvo apenas neste navegador; API indisponível.");
+        if (!salvo || salvo.__salvoSomenteLocalEm) {
+            throw new Error("Não foi possível salvar o orçamento no servidor.");
         }
     } catch (e) {
         console.error(e);
