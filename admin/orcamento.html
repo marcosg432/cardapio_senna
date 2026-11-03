@@ -26,6 +26,7 @@
         <div id="admin-detalhe-conteudo" hidden>
             <div class="admin-card admin-detalhe">
                 <h1 id="orc-id" style="word-break:break-all"></h1>
+                <p id="detalhe-status-contrato" class="admin-tag-status">Contrato ainda não confirmado</p>
 
                 <h2>Dados do cliente</h2>
                 <p><strong>Nome:</strong> <span id="view-nome"></span></p>
@@ -265,9 +266,27 @@
                     <button type="button" class="admin-btn admin-btn-item-acao--perigo" id="btn-remover-obs-internas">Remover observação</button>
                 </div>
 
+                <h3 class="admin-secao-titulo">Ordem de serviço</h3>
+                <p class="admin-campo-ajuda">Estas anotações são da equipe. Elas não entram no orçamento nem no contrato enviados à cliente. O local da festa, a data e os horários continuam nos campos do evento, mais acima.</p>
+                <p id="detalhe-pagamento-aviso" class="admin-campo-ajuda">Confirme o contrato antes de registrar pagamentos.</p>
+                <div class="admin-acoes">
+                    <button type="button" class="admin-btn" id="btn-confirmar-contrato">Confirmar contrato</button>
+                    <a class="admin-btn admin-btn-sec" id="btn-ver-financeiro" href="gestao/financeiro.html" hidden>Ver financeiro</a>
+                    <a class="admin-btn" id="btn-registrar-pagamento" href="gestao/financeiro.html" hidden>Registrar pagamento</a>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-ordem-servico" hidden>Gerar ordem de serviço</button>
+                </div>
+                <label for="os-cerimonialista">Cerimonialista</label>
+                <input type="text" id="os-cerimonialista" maxlength="200" autocomplete="off" placeholder="Nome da pessoa ou empresa">
+                <label for="os-suportes">Suportes</label>
+                <textarea id="os-suportes" rows="3" maxlength="500" placeholder="Ex.: 2 suportes de cristal e 1 bandeja dourada"></textarea>
+                <label for="os-observacoes">Observações para Ordem de Serviço</label>
+                <textarea id="os-observacoes" rows="5" maxlength="4000" placeholder="Reservar suportes, caixinha extra, separação de doces, montagem ou cuidados na entrega."></textarea>
+                <div class="admin-obs-internas-acoes">
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-salvar-os">Salvar ordem de serviço</button>
+                </div>
+
                 <div class="admin-acoes">
                     <button type="button" class="admin-btn" id="btn-salvar">Salvar alterações</button>
-                    <button type="button" class="admin-btn admin-btn-whats" id="btn-whatsapp-orc">Enviar orçamento no WhatsApp</button>
                     <button type="button" class="admin-btn" id="btn-pdf-orcamento" style="background:#6d5345">Gerar orçamento PDF</button>
                     <button type="button" class="admin-btn admin-btn-sec" id="btn-contrato">Gerar contrato (PDF)</button>
                     <a class="admin-btn admin-btn-sec" id="btn-historico-pdf" href="gestao/documentos.html">Histórico de versões</a>

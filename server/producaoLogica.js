@@ -37,6 +37,11 @@ function textoLimpo(valor) {
   return String(valor == null ? '' : valor).replace(/\s+/g, ' ').trim();
 }
 
+function textoLivre(valor) {
+  const texto = String(valor == null ? '' : valor).replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
+  return texto || null;
+}
+
 function chaveNome(nome) {
   return textoLimpo(nome).toLocaleLowerCase('pt-BR');
 }
@@ -65,10 +70,10 @@ function lerQuantidade(valor) {
 
 function lerUnidade(item) {
   if (!item || item.unidade == null) {
-    return { informada: false, texto: 'Unidade não informada' };
+    return { informada: false, texto: '' };
   }
   const texto = String(item.unidade).trim();
-  if (!texto) return { informada: false, texto: 'Unidade não informada' };
+  if (!texto) return { informada: false, texto: '' };
   return { informada: true, texto: texto };
 }
 
@@ -78,7 +83,7 @@ function normalizarItem(item) {
       nome: 'Nome não informado',
       quantidade: null,
       quantidade_texto: 'Conferência necessária',
-      unidade: 'Unidade não informada',
+      unidade: '',
       unidade_informada: false,
       complementar: false,
       valido: false,
@@ -93,11 +98,11 @@ function normalizarItem(item) {
     nome: nome || 'Nome não informado',
     quantidade: valido ? quantidade.valor : null,
     quantidade_texto: valido ? formatarQuantidade(quantidade.valor) : 'Conferência necessária',
-    unidade: unidade.texto,
+    unidade: unidade.informada ? unidade.texto : '',
     unidade_informada: unidade.informada,
     complementar: item.extra_pedido_admin === true,
     valido: valido,
-    conferencia: !valido || !unidade.informada
+    conferencia: !valido
   };
 }
 
@@ -161,11 +166,19 @@ function montarEvento(orcamento) {
   if (!lista) avisos.push('Lista de produtos a conferir.');
   itens.forEach(function (item) {
     if (!item.valido) avisos.push('Produto a conferir: ' + item.nome + '.');
-    else if (!item.unidade_informada) avisos.push('Unidade não informada: ' + item.nome + '.');
   });
+  const semUnidade = itens.filter(function (item) { return item.valido && !item.unidade_informada; }).length;
   const conferencia = avisos.length > 0;
+  const local = textoLimpo(orcamento && (orcamento.evento_local_festa || orcamento.local || orcamento.local_evento));
+  const nome = textoLimpo(orcamento && (orcamento.nome_cliente || orcamento.cliente));
   return {
     id: Number(orcamento.id),
+    nome_cliente: nome || null,
+    local_festa: local || null,
+    cerimonialista: textoLimpo(orcamento && orcamento.evento_cerimonialista) || null,
+    suportes: textoLivre(orcamento && orcamento.ordem_servico_suportes),
+    observacoes_os: textoLivre(orcamento && orcamento.ordem_servico_obs),
+    sem_unidade: semUnidade,
     tipo_evento: tipo || null,
     data_evento: data,
     data_texto: formatarIso(data),

@@ -101,7 +101,7 @@
                 "<td>" + escapar(evento.situacao) + "</td>" +
                 "<td><div class=\"producao-acoes\">" +
                 "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"ver\" data-id=\"" + escapar(evento.id) + "\">Ver produção</button>" +
-                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar ficha PDF</button>" +
+                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar ordem de serviço</button>" +
                 "</div></td></tr>"
             );
         }).join("");
@@ -122,7 +122,12 @@
             itemLista("Modalidade", evento.modalidade)
         ].join("");
         var avisos = document.getElementById("producao-detalhe-avisos");
-        avisos.innerHTML = (evento.avisos || []).map(function (aviso) {
+        var semUnidade = (evento.itens || []).filter(function (item) {
+            return item.valido !== false && !item.unidade;
+        }).length;
+        var notas = (evento.avisos || []).slice();
+        if (semUnidade) notas.push("Há produtos sem unidade. A quantidade de cada um continua na lista.");
+        avisos.innerHTML = notas.map(function (aviso) {
             return "<p class=\"producao-aviso\">" + escapar(aviso) + "</p>";
         }).join("");
         var itens = evento.itens || [];

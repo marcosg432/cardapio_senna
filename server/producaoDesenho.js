@@ -193,49 +193,96 @@
         ctx.avancar(6);
     }
 
+    function unidadeExibicao(item) {
+        if (!item || item.unidade_informada === false) return '';
+        var texto = String(item.unidade || '').trim();
+        if (!texto || texto === 'Unidade não informada' || texto === '—') return '';
+        return texto;
+    }
+
+    function escreverLivre(ctx, doc, valor) {
+        String(valor).split('\n').forEach(function (linha) {
+            var partes = doc.splitTextToSize(linha || ' ', ctx.largura);
+            partes.forEach(function (parte) {
+                ctx.garantir(5);
+                ctx.texto(parte, ctx.margem, ctx.posicao(), 10, 'normal', ctx.cores.tinta);
+                ctx.avancar(4.6);
+            });
+        });
+    }
+
     function gerarFichaProducaoPDF(evento, opcoes) {
         var doc = documento(opcoes);
         doc.setProperties({
-            title: 'Ficha de Produção ' + evento.id,
+            title: 'Ordem de Serviço — Produção ' + evento.id,
             author: 'Candy Li Doces Finos',
-            subject: 'Produção do evento'
+            subject: 'Ordem de serviço da produção'
         });
-        var desenhado = desenhar(doc, opcoes, 'Ficha de Produção', 'Contrato ' + evento.id, function (ctx) {
-            ctx.texto(evento.data_texto || 'Data a conferir', ctx.margem, ctx.posicao(), 16, 'bold', ctx.cores.navy);
-            ctx.avancar(8);
-            linhaEvento(ctx, 'Evento', evento.tipo_evento || 'A conferir');
+        var desenhado = desenhar(doc, opcoes, 'Ordem de Serviço — Produção', 'Contrato ' + evento.id, function (ctx) {
+            if (evento.nome_cliente) {
+                ctx.texto(evento.nome_cliente, ctx.margem, ctx.posicao(), 16, 'bold', ctx.cores.navy);
+                ctx.avancar(7);
+            }
+            if (evento.data_texto) {
+                ctx.texto(evento.data_texto, ctx.margem, ctx.posicao(), 12, 'normal', ctx.cores.tinta);
+                ctx.avancar(8);
+            }
+            ctx.texto('Identificação', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+            ctx.avancar(6);
+            linhaEvento(ctx, 'Local', evento.local_festa);
+            linhaEvento(ctx, 'Evento', evento.tipo_evento);
             linhaEvento(ctx, 'Convidados', evento.convidados == null ? null : String(evento.convidados));
-            linhaEvento(ctx, 'Entrega', evento.horario_entrega);
-            linhaEvento(ctx, 'Festa', evento.horario_festa);
             linhaEvento(ctx, 'Modalidade', evento.modalidade);
-            ctx.avancar(3);
-            if (evento.avisos && evento.avisos.length) {
-                ctx.garantir(8);
-                ctx.texto('Conferência', ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
-                ctx.avancar(5);
-                evento.avisos.forEach(function (aviso) {
+            if (evento.horario_entrega || evento.horario_festa) {
+                ctx.avancar(2);
+                ctx.texto('Horários', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+                ctx.avancar(6);
+                linhaEvento(ctx, 'Entrega', evento.horario_entrega);
+                linhaEvento(ctx, 'Festa', evento.horario_festa);
+            }
+            var conferencia = !!(evento.cerimonialista || evento.suportes || (evento.avisos && evento.avisos.length));
+            if (conferencia) {
+                ctx.avancar(2);
+                ctx.texto('Conferência', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+                ctx.avancar(6);
+                linhaEvento(ctx, 'Cerimonialista', evento.cerimonialista);
+                if (evento.suportes) {
+                    ctx.garantir(6);
+                    ctx.texto('Suportes', ctx.margem, ctx.posicao(), 8, 'bold', ctx.cores.mudo);
+                    ctx.avancar(4);
+                    escreverLivre(ctx, doc, evento.suportes);
+                    ctx.avancar(2);
+                }
+                (evento.avisos || []).forEach(function (aviso) {
                     ctx.garantir(5);
                     ctx.texto(aviso, ctx.margem, ctx.posicao(), 9, 'normal', ctx.cores.mudo, 'left', ctx.largura);
                     ctx.avancar(5);
                 });
-                ctx.avancar(2);
             }
+            ctx.avancar(2);
             ctx.garantir(8);
             ctx.texto('Produtos contratados', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
             ctx.avancar(4);
-            var colunas = [
-                { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 68 },
-                { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 74, largura: 36, estilo: 'bold', cor: ctx.cores.navy },
-                { titulo: 'Unidade', chave: 'unidade', x: ctx.margem + 114, largura: 40 },
+            var itens = evento.itens || [];
+            var comUnidade = itens.some(function (item) { return unidadeExibicao(item); });
+            var colunas = comUnidade ? [
+                { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 78 },
+                { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 84, largura: 34, estilo: 'bold', cor: ctx.cores.navy },
+                { titulo: 'Unidade', chave: 'unidade', x: ctx.margem + 122, largura: 34 },
+                { titulo: 'Compl.', chave: 'complementar', x: ctx.margem + 158, largura: 18 }
+            ] : [
+                { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 112 },
+                { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 118, largura: 38, estilo: 'bold', cor: ctx.cores.navy },
                 { titulo: 'Compl.', chave: 'complementar', x: ctx.margem + 158, largura: 18 }
             ];
-            var linhas = (evento.itens || []).map(function (item) {
-                return {
+            var linhas = itens.map(function (item) {
+                var linha = {
                     nome: item.nome,
                     quantidade_texto: item.quantidade_texto,
-                    unidade: item.unidade,
                     complementar: item.complementar ? 'Sim' : '—'
                 };
+                if (comUnidade) linha.unidade = unidadeExibicao(item);
+                return linha;
             });
             if (!linhas.length) {
                 ctx.texto('Nenhum produto contratado.', ctx.margem, ctx.posicao() + 4, 10, 'normal', ctx.cores.mudo);
@@ -243,19 +290,26 @@
             } else {
                 ctx.tabela(colunas, linhas);
             }
+            if (evento.observacoes_os) {
+                ctx.garantir(10);
+                ctx.texto('Observações para Ordem de Serviço', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+                ctx.avancar(5);
+                escreverLivre(ctx, doc, evento.observacoes_os);
+                ctx.avancar(3);
+            }
             instrucoes(ctx, evento.operacional);
             ctx.garantir(24);
-            ctx.texto('Conferência da cozinha', ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
+            ctx.texto('Controle da equipe', ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
             ctx.avancar(7);
             doc.setDrawColor(ctx.cores.linha[0], ctx.cores.linha[1], ctx.cores.linha[2]);
-            ctx.texto('Produzido', ctx.margem, ctx.posicao(), 8, 'bold', ctx.cores.mudo);
-            doc.line(ctx.margem + 22, ctx.posicao(), ctx.margem + 78, ctx.posicao());
-            ctx.texto('Conferido por', ctx.margem + 88, ctx.posicao(), 8, 'bold', ctx.cores.mudo);
-            doc.line(ctx.margem + 114, ctx.posicao(), ctx.margem + ctx.largura, ctx.posicao());
+            ctx.texto('Produzido por', ctx.margem, ctx.posicao(), 8, 'bold', ctx.cores.mudo);
+            doc.line(ctx.margem + 32, ctx.posicao(), ctx.margem + 84, ctx.posicao());
+            ctx.texto('Conferido por', ctx.margem + 90, ctx.posicao(), 8, 'bold', ctx.cores.mudo);
+            doc.line(ctx.margem + 118, ctx.posicao(), ctx.margem + ctx.largura, ctx.posicao());
             ctx.avancar(8);
         });
         return {
-            arquivo: 'ficha-producao-' + evento.id + '.pdf',
+            arquivo: 'ordem-servico-' + evento.id + '.pdf',
             paginas: desenhado.paginas,
             pdf: desenhado.pdf
         };
@@ -277,11 +331,19 @@
                 ctx.texto('Nenhum evento confirmado nesta data.', ctx.margem, ctx.posicao() + 2, 10, 'normal', ctx.cores.mudo);
                 ctx.avancar(10);
             } else {
-                ctx.tabela([
+                var totaisComUnidade = (dia.totais || []).some(function (item) { return unidadeExibicao(item); });
+                ctx.tabela(totaisComUnidade ? [
                     { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 96 },
                     { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 102, largura: 28, estilo: 'bold', tamanho: 11, cor: ctx.cores.navy },
                     { titulo: 'Unidade', chave: 'unidade', x: ctx.margem + 134, largura: 42 }
-                ], dia.totais);
+                ] : [
+                    { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 124 },
+                    { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 130, largura: 46, estilo: 'bold', tamanho: 11, cor: ctx.cores.navy }
+                ], (dia.totais || []).map(function (item) {
+                    var linha = { nome: item.nome, quantidade_texto: item.quantidade_texto };
+                    if (totaisComUnidade) linha.unidade = unidadeExibicao(item);
+                    return linha;
+                }));
             }
             ctx.garantir(8);
             ctx.texto('Eventos do dia', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
@@ -289,10 +351,17 @@
             if (!dia.eventos || !dia.eventos.length) return;
             dia.eventos.forEach(function (evento) {
                 ctx.garantir(16);
-                ctx.texto('Contrato ' + evento.id, ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
-                ctx.texto(evento.tipo_evento || 'Evento a conferir', ctx.margem + 48, ctx.posicao(), 10, 'normal', ctx.cores.tinta);
+                var tituloEvento = evento.nome_cliente || ('Contrato ' + evento.id);
+                ctx.texto(tituloEvento, ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy, 'left', ctx.largura);
+                ctx.avancar(5);
+                if (evento.nome_cliente) {
+                    ctx.texto('Contrato ' + evento.id, ctx.margem, ctx.posicao(), 9, 'normal', ctx.cores.mudo);
+                    ctx.avancar(5);
+                }
+                ctx.texto(evento.tipo_evento || 'Evento a conferir', ctx.margem, ctx.posicao(), 10, 'normal', ctx.cores.tinta);
                 ctx.avancar(5);
                 var notas = [];
+                if (evento.local_festa) notas.push(evento.local_festa);
                 if (evento.convidados != null) notas.push(evento.convidados + ' convidados');
                 if (evento.horario_entrega) notas.push('Entrega ' + evento.horario_entrega);
                 if (evento.horario_festa) notas.push('Festa ' + evento.horario_festa);
@@ -301,19 +370,30 @@
                     ctx.texto(notas.join(' · '), ctx.margem, ctx.posicao(), 8, 'normal', ctx.cores.mudo, 'left', ctx.largura);
                     ctx.avancar(5);
                 }
-                var linhas = (evento.itens || []).map(function (item) {
-                    return {
+                var itensDia = evento.itens || [];
+                var comUnidadeDia = itensDia.some(function (item) { return unidadeExibicao(item); });
+                var linhas = itensDia.map(function (item) {
+                    var linha = {
                         nome: item.nome,
-                        quantidade_texto: item.quantidade_texto,
-                        unidade: item.unidade
+                        quantidade_texto: item.quantidade_texto
                     };
+                    if (comUnidadeDia) linha.unidade = unidadeExibicao(item);
+                    return linha;
                 });
                 if (linhas.length) {
-                    ctx.tabela([
+                    ctx.tabela(comUnidadeDia ? [
                         { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 78 },
                         { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 84, largura: 42, estilo: 'bold', cor: ctx.cores.navy },
                         { titulo: 'Unidade', chave: 'unidade', x: ctx.margem + 130, largura: 46 }
+                    ] : [
+                        { titulo: 'Produto', chave: 'nome', x: ctx.margem + 2, largura: 120 },
+                        { titulo: 'Quantidade', chave: 'quantidade_texto', x: ctx.margem + 126, largura: 48, estilo: 'bold', cor: ctx.cores.navy }
                     ], linhas);
+                }
+                if (evento.observacoes_os) {
+                    ctx.garantir(8);
+                    escreverLivre(ctx, doc, evento.observacoes_os);
+                    ctx.avancar(2);
                 }
             });
             instrucoes(ctx, dia.operacional);

@@ -280,7 +280,7 @@ async function main() {
   detalhe.itens.forEach((itemLinha) => { porNome[itemLinha.nome] = itemLinha; });
   assert(porNome["Brigadeiro de Doce de Leite com Nozes"].quantidade_texto === "2" && porNome["Brigadeiro de Doce de Leite com Nozes"].unidade === "cento", "cento");
   assert(porNome["Pacote festa"].unidade === "pacote" && porNome["Pacote festa"].quantidade_texto === "1", "pacote");
-  assert(porNome["Bem-casado"].unidade === "Unidade não informada" && porNome["Bem-casado"].quantidade_texto === "50", "sem unidade");
+  assert(porNome["Bem-casado"].unidade === "" && porNome["Bem-casado"].quantidade_texto === "50", "sem unidade");
   assert(porNome["Bem-casado extra"].complementar === true && porNome["Bem-casado"].complementar === false, "complementar");
   assert(porNome["Doce com mínimo"].quantidade_texto === "3", "ignora mínimo");
   assert(porNome["Doce quebrado"].quantidade_texto === "Conferência necessária" && porNome["Doce ambíguo"].quantidade_texto === "Conferência necessária", "quantidades inválidas");
@@ -320,9 +320,9 @@ async function main() {
     return textoPdf(resposta.body);
   }
   const ficha = await pdf("/api/producao/eventos/950001/pdf?quantidade=1", "ficha.pdf");
-  assert(ficha.indexOf("Candy Li Doces Finos") !== -1 && ficha.indexOf("Ficha de Produção") !== -1, "cabeçalho");
+  assert(ficha.indexOf("Candy Li Doces Finos") !== -1 && ficha.indexOf("Ordem de Serviço") !== -1, "cabeçalho");
   assert(ficha.indexOf("Contrato 950001") !== -1 && ficha.indexOf("Casamento") !== -1, "evento pdf");
-  assert(ficha.indexOf("cento") !== -1 && ficha.indexOf("pacote") !== -1 && ficha.indexOf("Unidade n") !== -1, "unidades pdf");
+  assert(ficha.indexOf("cento") !== -1 && ficha.indexOf("pacote") !== -1 && ficha.indexOf("Unidade não informada") === -1, "unidades pdf");
   assert(ficha.indexOf("Confer") !== -1 && ficha.indexOf("18:30") !== -1 && ficha.indexOf("14") !== -1, "conferência pdf");
   assert(ficha.indexOf("Produzido") !== -1 && ficha.indexOf("Conferido por") !== -1, "conferência manual");
   ["telefone secreto", "nota interna", "degustacao secreta", "cpf-nao-mostrar", "rua secreta", "R$", "qtd_min"].forEach((proibido) => {
@@ -398,7 +398,7 @@ async function main() {
     botao.click();
     return true;
   })()`);
-  await avaliar("document.getElementById('producao-detalhe').hidden === false && document.getElementById('producao-detalhe').innerText.indexOf('cento') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Unidade não informada') !== -1");
+  await avaliar("document.getElementById('producao-detalhe').hidden === false && document.getElementById('producao-detalhe').innerText.indexOf('cento') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Há produtos sem unidade') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Unidade não informada') === -1");
   await avaliar("document.body.innerText.indexOf('120') !== -1 && document.body.innerText.indexOf('telefone secreto') === -1 && document.body.innerText.indexOf('R$') === -1");
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/index.html" });
   await avaliar("document.getElementById('indicador-orcamentos').textContent === '5'");

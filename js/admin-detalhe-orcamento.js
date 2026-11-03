@@ -1,5 +1,5 @@
 /**
- * Detalhe do orçamento (admin): desconto, degustação, pagamento, WhatsApp, PDF proposta
+ * Detalhe do orçamento (admin): desconto, degustação, confirmação, ordem de serviço e PDF
  */
 (function () {
     /** Soma valor original a partir dos itens (quantidade × preço unitário). */
@@ -308,6 +308,42 @@
         return msg;
     }
 
+    function contratoEstaConfirmado(o) {
+        var gestao = o && o.gestao_contrato;
+        return !!(gestao && gestao.status === "confirmado" && gestao.confirmado_em);
+    }
+
+    function atualizarPainelContrato(o) {
+        var confirmado = contratoEstaConfirmado(o);
+        var status = document.getElementById("detalhe-status-contrato");
+        var botao = document.getElementById("btn-confirmar-contrato");
+        var aviso = document.getElementById("detalhe-pagamento-aviso");
+        var ver = document.getElementById("btn-ver-financeiro");
+        var registrar = document.getElementById("btn-registrar-pagamento");
+        var ordem = document.getElementById("btn-ordem-servico");
+        var destino = "gestao/financeiro.html?contrato=" + encodeURIComponent(o.id);
+        if (status) status.textContent = confirmado ? "Contrato confirmado" : "Contrato ainda não confirmado";
+        if (botao) botao.hidden = confirmado;
+        if (aviso) aviso.hidden = confirmado;
+        if (ver) {
+            ver.hidden = !confirmado;
+            ver.href = destino;
+        }
+        if (registrar) {
+            registrar.hidden = !confirmado;
+            registrar.href = destino + "#pagamento";
+        }
+        if (ordem) ordem.hidden = !confirmado;
+        var cerimonia = document.getElementById("os-cerimonialista");
+        var suportes = document.getElementById("os-suportes");
+        var observacao = document.getElementById("os-observacoes");
+        var anexo = document.getElementById("contrato-cerimonialista");
+        if (cerimonia) cerimonia.value = o.evento_cerimonialista || "";
+        if (anexo && cerimonia) anexo.value = cerimonia.value;
+        if (suportes) suportes.value = o.ordem_servico_suportes || "";
+        if (observacao) observacao.value = o.ordem_servico_obs || "";
+    }
+
     function renderOrcamento(o) {
         document.getElementById("orc-id").textContent = o.id;
         document.getElementById("view-nome").textContent = o.cliente || o.nome_cliente || "—";
@@ -485,6 +521,7 @@
         selStatus.innerHTML = "";
         preencherStatusSelect(selStatus, o.status);
         atualizarPreviewFinal(o);
+        atualizarPainelContrato(o);
     }
 
     var orcamentoAtual = null;
@@ -891,14 +928,66 @@
             });
         }
 
-        document.getElementById("btn-whatsapp-orc").addEventListener("click", function () {
-            var fresh = getOrcamentoPorId(orcamentoAtual.id);
-            if (!fresh) return;
-            var dadosWpp = Object.assign({}, fresh, patchComumExtra());
-            var msg = montarWhatsAppDetalhe(dadosWpp);
-            var tel = (CONFIG && CONFIG.telefoneWhatsApp) ? CONFIG.telefoneWhatsApp : "5519981178167";
-            window.open("https://wa.me/" + tel + "?text=" + encodeURIComponent(msg), "_blank");
-        });
+        var campoOs = document.getElementById("os-cerimonialista");
+        var campoAnexo = document.getElementById("contrato-cerimonialista");
+        if (campoOs && campoAnexo) {
+            campoOs.addEventListener("input", function () { campoAnexo.value = campoOs.value; });
+            campoAnexo.addEventListener("input", function () { campoOs.value = campoAnexo.value; });
+        }
+        var btnConfirmar = document.getElementById("btn-confirmar-contrato");
+        if (btnConfirmar) {
+            btnConfirmar.addEventListener("click", function () {
+                if (!orcamentoAtual || contratoEstaConfirmado(orcamentoAtual)) return;
+                if (!window.confirm("Confirmar este contrato? O valor será congelado no financeiro e o evento entra na produção.")) return;
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/orcamentos/" + encodeURIComponent(orcamentoAtual.id) + "/confirmar-contrato", true);
+                xhr.withCredentials = true;
+                xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+                if (typeof adminCsrfToken === "string" && adminCsrfToken) {
+                    xhr.setRequestHeader("X-CSRF-Token", adminCsrfToken);
+                }
+                xhr.onload = function () {
+                    if (xhr.status !== 200) {
+                        alert("Não foi possível confirmar o contrato.");
+                        return;
+                    }
+                    var fresco = getOrcamentoPorId(orcamentoAtual.id);
+                    if (!fresco) return;
+                    orcamentoAtual = fresco;
+                    renderOrcamento(fresco);
+                };
+                xhr.send("{}");
+            });
+        }
+        var btnSalvarOs = document.getElementById("btn-salvar-os");
+        if (btnSalvarOs) {
+            btnSalvarOs.addEventListener("click", function () {
+                var corpo = {
+                    evento_cerimonialista: strInput("os-cerimonialista") || null,
+                    ordem_servico_suportes: strInput("os-suportes") || null,
+                    ordem_servico_obs: strInput("os-observacoes") || null
+                };
+                var xhr = new XMLHttpRequest();
+                xhr.open("PATCH", "/api/orcamentos/" + encodeURIComponent(orcamentoAtual.id) + "/operacional", true);
+                xhr.withCredentials = true;
+                xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+                if (typeof adminCsrfToken === "string" && adminCsrfToken) {
+                    xhr.setRequestHeader("X-CSRF-Token", adminCsrfToken);
+                }
+                xhr.onload = function () {
+                    if (xhr.status !== 200) {
+                        alert("Não foi possível salvar a ordem de serviço.");
+                        return;
+                    }
+                    var fresco = getOrcamentoPorId(orcamentoAtual.id);
+                    if (!fresco) return;
+                    orcamentoAtual = fresco;
+                    renderOrcamento(fresco);
+                    alert("Ordem de serviço salva.");
+                };
+                xhr.send(JSON.stringify(corpo));
+            });
+        }
 
         function baixarPdfDoServidor(caminho, nome) {
             var xhr = new XMLHttpRequest();
@@ -923,6 +1012,17 @@
                 alert("O servidor não gerou o PDF oficial.");
             };
             xhr.send();
+        }
+
+        var btnOrdem = document.getElementById("btn-ordem-servico");
+        if (btnOrdem) {
+            btnOrdem.addEventListener("click", function () {
+                if (!orcamentoAtual || !contratoEstaConfirmado(orcamentoAtual)) return;
+                baixarPdfDoServidor(
+                    "/api/producao/eventos/" + encodeURIComponent(orcamentoAtual.id) + "/pdf",
+                    "ordem-servico-" + orcamentoAtual.id + ".pdf"
+                );
+            });
         }
 
         document.getElementById("btn-pdf-orcamento").addEventListener("click", function () {

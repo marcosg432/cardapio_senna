@@ -122,8 +122,14 @@ function handleFinanceiro(req, res, pathname) {
     }
     try {
       const resultado = financeiroRepo.detalhar(detalhe[1]);
-      if (resultado.status === 404) return sendJson(res, 404, { erro: 'Contrato não encontrado.' });
-      if (resultado.status !== 200) return sendJson(res, resultado.status, { erro: mensagem(resultado.motivo) });
+      if (resultado.status === 404) {
+        sendJson(res, 404, { erro: 'Contrato não encontrado.' });
+        return true;
+      }
+      if (resultado.status !== 200) {
+        sendJson(res, resultado.status, { erro: mensagem(resultado.motivo) });
+        return true;
+      }
       sendJson(res, 200, resultado.contrato);
     } catch (e) {
       sendJson(res, 500, { erro: 'Não foi possível consultar o financeiro.' });

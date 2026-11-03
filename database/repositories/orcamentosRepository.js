@@ -203,6 +203,8 @@ function inserir(obj) {
       throw falha('existente');
     }
     delete obj.gestao_contrato;
+    delete obj.ordem_servico_obs;
+    delete obj.ordem_servico_suportes;
     const payload = JSON.stringify(obj);
     const now = new Date().toISOString();
     const created = obj.data_criacao || obj.data || now;
@@ -336,6 +338,62 @@ function confirmarContrato(id) {
   return { orcamento: salvo, repetida: repetida };
 }
 
+const LIMITES_OPERACIONAIS = {
+  ordem_servico_obs: 4000,
+  ordem_servico_suportes: 500,
+  evento_cerimonialista: 200
+};
+
+function textoOperacional(valor, maximo) {
+  if (valor == null) return null;
+  if (typeof valor !== 'string') return undefined;
+  if (valor.indexOf('\0') !== -1) return undefined;
+  const texto = valor.replace(/\r\n/g, '\n').trim();
+  if (!texto) return null;
+  if (texto.length > maximo) return undefined;
+  return texto;
+}
+
+function atualizarOperacional(id, body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) throw falha('operacional');
+  const permitidas = Object.keys(LIMITES_OPERACIONAIS);
+  const chaves = Object.keys(body);
+  if (!chaves.length || chaves.some((chave) => permitidas.indexOf(chave) === -1)) {
+    throw falha('operacional');
+  }
+  const patch = {};
+  for (const chave of chaves) {
+    const texto = textoOperacional(body[chave], LIMITES_OPERACIONAIS[chave]);
+    if (texto === undefined) throw falha('operacional');
+    patch[chave] = texto;
+  }
+  const numero = Number(id);
+  if (!Number.isSafeInteger(numero) || numero <= 0) throw falha('operacional');
+  const db = getDb();
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(numero);
+    if (!row) {
+      db.exec('ROLLBACK');
+      return null;
+    }
+    const atual = JSON.parse(row.payload);
+    permitidas.forEach((chave) => {
+      if (!Object.prototype.hasOwnProperty.call(patch, chave)) return;
+      if (patch[chave] == null) delete atual[chave];
+      else atual[chave] = patch[chave];
+    });
+    atual.id = numero;
+    db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(atual), new Date().toISOString(), numero);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    throw e;
+  }
+  return buscarPorId(numero);
+}
+
 function deletar(id) {
   const db = getDb();
   const r = db.prepare('DELETE FROM orcamentos WHERE id = ?').run(Number(id));
@@ -349,5 +407,6 @@ module.exports = {
   atualizar,
   substituir,
   deletar,
-  confirmarContrato
+  confirmarContrato,
+  atualizarOperacional
 };

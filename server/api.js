@@ -42,6 +42,7 @@ function sendJson(res, status, obj) {
 function erroOrcamento(e) {
   if (e && e.code === 'existente') return { status: 409, body: { erro: 'Orçamento já cadastrado.' } };
   if (e && e.code === 'confirmado') return { status: 409, body: { erro: 'Contrato confirmado. Esta alteração precisa de revisão.' } };
+  if (e && e.code === 'operacional') return { status: 400, body: { erro: 'Não foi possível salvar a ordem de serviço.' } };
   if (e && e.code === 'id') return { status: 400, body: { erro: 'Identificador inválido.' } };
   return { status: 400, body: { error: String(e && e.message || 'Não foi possível salvar o orçamento.') } };
 }
@@ -279,6 +280,30 @@ function handleApi(req, res, pathname, apiDbReady) {
     return auth.handleAuth(req, res, pathname);
   }
 
+  const operacional = pathname.match(/^\/api\/orcamentos\/(\d+)\/operacional\/?$/);
+  if (operacional) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (req.method !== 'PATCH') return sendJson(res, 405, { erro: 'Método não permitido' });
+    if (!auth.exigirAdmin(req, res, { csrf: true })) return;
+    return readJsonBody(req, (err, body) => {
+      if (err) return sendJson(res, 400, { erro: 'Não foi possível salvar a ordem de serviço.' });
+      try {
+        const salvo = orcamentosRepo.atualizarOperacional(operacional[1], body);
+        if (!salvo) return sendJson(res, 404, { erro: 'Orçamento não encontrado.' });
+        sendJson(res, 200, {
+          ok: true,
+          id: Number(operacional[1]),
+          evento_cerimonialista: salvo.evento_cerimonialista || null,
+          ordem_servico_suportes: salvo.ordem_servico_suportes || null,
+          ordem_servico_obs: salvo.ordem_servico_obs || null
+        });
+      } catch (e) {
+        const falha = erroOrcamento(e);
+        sendJson(res, falha.status, falha.body.erro ? falha.body : { erro: 'Não foi possível salvar a ordem de serviço.' });
+      }
+    });
+  }
+
   const confirmar = pathname.match(/^\/api\/orcamentos\/(\d+)\/confirmar-contrato\/?$/);
   if (confirmar) {
     if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
@@ -356,6 +381,7 @@ function handleApi(req, res, pathname, apiDbReady) {
     return crudGeneric(req, res, pathname, repo, apiDbReady, nome);
   }
 
+  if (res.headersSent) return;
   sendJson(res, 404, { error: 'Rota desconhecida' });
 }
 

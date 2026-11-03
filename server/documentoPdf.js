@@ -207,6 +207,7 @@ function itemDesenho(item) {
     nome: item && item.nome,
     quantidade_texto: item && (item.quantidade_texto || item.quantidade),
     unidade: item && item.unidade,
+    unidade_informada: !!(item && item.unidade_informada !== false && String(item.unidade || '').trim() && String(item.unidade).trim() !== 'Unidade não informada'),
     complementar: !!(item && item.complementar)
   };
 }
@@ -220,6 +221,11 @@ function eventoDesenho(evento, operacional) {
     horario_entrega: evento.horario_entrega,
     horario_festa: evento.horario_festa,
     modalidade: evento.modalidade,
+    nome_cliente: evento.nome_cliente || null,
+    local_festa: evento.local_festa || null,
+    cerimonialista: evento.cerimonialista || null,
+    suportes: evento.suportes || null,
+    observacoes_os: evento.observacoes_os || null,
     avisos: evento.avisos || [],
     itens: (evento.itens || []).map(itemDesenho),
     operacional: operacional || null
@@ -241,7 +247,7 @@ function gerar(tipo, conteudo, opcoes) {
     const contratado = conteudo && conteudo.contratado;
     if (!contratado || !contratado.id) falha('pdf');
     buffer = producaoPdf.desenharEvento(eventoDesenho(contratado, conteudo.operacional), marcas);
-    arquivo = 'ficha-producao-' + contratado.id + '.pdf';
+    arquivo = 'ordem-servico-' + contratado.id + '.pdf';
   } else if (tipo === 'producao_dia') {
     const contratado = conteudo && conteudo.contratado;
     if (!contratado || !contratado.data) falha('pdf');

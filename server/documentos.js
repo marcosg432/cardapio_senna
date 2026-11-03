@@ -145,6 +145,7 @@ function itemProducao(item) {
     quantidade: item.quantidade_texto,
     quantidade_texto: item.quantidade_texto,
     unidade: item.unidade,
+    unidade_informada: item.unidade_informada !== false && !!String(item.unidade || '').trim(),
     complementar: !!item.complementar
   };
 }
@@ -159,6 +160,11 @@ function eventoCongelado(evento) {
     horario_entrega: evento.horario_entrega,
     horario_festa: evento.horario_festa,
     modalidade: evento.modalidade,
+    nome_cliente: evento.nome_cliente || null,
+    local_festa: evento.local_festa || null,
+    cerimonialista: evento.cerimonialista || null,
+    suportes: evento.suportes || null,
+    observacoes_os: evento.observacoes_os || null,
     avisos: evento.avisos || [],
     itens: (evento.itens || []).map(itemProducao)
   };

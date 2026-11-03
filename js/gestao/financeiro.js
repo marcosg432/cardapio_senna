@@ -116,7 +116,7 @@
         preencherTotais(dados.totais || {});
         if (!contratos.length) {
             estado.hidden = false;
-            estado.textContent = "Nenhum contrato confirmado.";
+            estado.textContent = "Nenhum contrato confirmado. Confirme o contrato na tela de detalhes ou em Gestão, Contratos. O pagamento só aparece depois dessa confirmação.";
             tabela.hidden = true;
             corpo.innerHTML = "";
             return;
@@ -203,11 +203,19 @@
 
     function abrir(id) {
         pedir("GET", "/api/financeiro/contratos/" + encodeURIComponent(id), null, function (status, dados) {
+            if (status === 409) {
+                mostrarMensagem("Confirme o contrato antes de registrar pagamentos.", true);
+                return;
+            }
             if (status !== 200 || !dados) {
                 mostrarMensagem("Não foi possível abrir o contrato.", true);
                 return;
             }
             desenharDetalhe(dados);
+            if (window.location.hash === "#pagamento") {
+                var campo = document.getElementById("financeiro-valor");
+                if (campo) campo.focus();
+            }
         });
     }
 
@@ -340,6 +348,14 @@
         }
     });
 
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { carregarLista(); });
-    else carregarLista();
+    function iniciar() {
+        carregarLista(function () {
+            var id = "";
+            try { id = new URLSearchParams(window.location.search).get("contrato") || ""; } catch (e) { id = ""; }
+            if (id) abrir(id);
+        });
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+    else iniciar();
 })();

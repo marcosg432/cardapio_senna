@@ -27,6 +27,7 @@
         </div>
 
         <div id="dashboard-conteudo" hidden>
+            <p class="admin-card" style="font-size:0.92rem;line-height:1.5">Período: todo o histórico dos orçamentos. Estes números não são do mês atual. A etapa comercial não é a confirmação do contrato na Gestão.</p>
             <div class="dashboard-cards" id="dashboard-cards"></div>
 
             <div class="dashboard-chart">
@@ -85,6 +86,7 @@
 
                 var emDeg = 0;
                 var aprovados = 0;
+                var confirmadosGestao = 0;
                 var fechados = 0;
                 var perdidos = 0;
                 var valorPropostas = 0;
@@ -96,6 +98,8 @@
                     porStatus[k] = (porStatus[k] || 0) + 1;
                     if (k === "degustacao_agendada" || k === "degustacao_realizada") emDeg++;
                     if (k === "desconto_aplicado" || k === "contrato_gerado") aprovados++;
+                    var gestao = o.gestao_contrato;
+                    if (gestao && gestao.status === "confirmado" && gestao.confirmado_em) confirmadosGestao++;
                     if (k === "fechado") fechados++;
                     if (k === "perdido") perdidos++;
                     var vf = valorFinalOrc(o);
@@ -107,11 +111,12 @@
                 cards.innerHTML =
                     cardHtml("Total de orçamentos", String(total)) +
                     cardHtml("Em degustação", String(emDeg)) +
-                    cardHtml("Aprovados (pós-degust.)", String(aprovados)) +
-                    cardHtml("Fechados", String(fechados)) +
+                    cardHtml("Etapa comercial após a degustação", String(aprovados), "Desconto aplicado ou contrato gerado. Não é um contrato confirmado.") +
+                    cardHtml("Contratos confirmados na Gestão", String(confirmadosGestao), "Aceite manual. Este número não altera os valores abaixo.") +
+                    cardHtml("Fechados", String(fechados), "Somente o status Fechado.") +
                     cardHtml("Perdidos", String(perdidos)) +
-                    cardHtml("Valor em propostas abertas", fmt(valorPropostas)) +
-                    cardHtml("Valor total fechado", fmt(valorFechado));
+                    cardHtml("Valor em propostas abertas", fmt(valorPropostas), "Todo o histórico, exceto perdido e fechado.") +
+                    cardHtml("Valor total fechado", fmt(valorFechado), "Só o status Fechado. A confirmação na Gestão não entra nesta soma.");
 
                 var keys = Object.keys(CONFIG.STATUS_LABELS || {});
                 var maxC = Math.max.apply(null, keys.map(function (key) {
@@ -133,8 +138,10 @@
                 });
             }
 
-            function cardHtml(titulo, valor) {
-                return "<div class=\"dashboard-card\"><h3>" + escapeHtml(titulo) + "</h3><div class=\"valor\">" + escapeHtml(valor) + "</div></div>";
+            function cardHtml(titulo, valor, nota) {
+                return "<div class=\"dashboard-card\"><h3>" + escapeHtml(titulo) + "</h3><div class=\"valor\">" + escapeHtml(valor) + "</div>" +
+                    (nota ? "<p style=\"font-size:0.82rem;line-height:1.4;margin:0.4rem 0 0\">" + escapeHtml(nota) + "</p>" : "") +
+                    "</div>";
             }
 
             function escapeHtml(s) {
