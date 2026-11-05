@@ -58,7 +58,7 @@
             if (botao) botao.disabled = false;
             var tipo = xhr.getResponseHeader("Content-Type") || "";
             if (xhr.status !== 200 || tipo.indexOf("application/pdf") !== 0 || !xhr.response) {
-                mostrarMensagem("Não foi possível gerar a ficha.", true);
+                mostrarMensagem("Não foi possível gerar o PDF de consulta.", true);
                 return;
             }
             var cabecalho = xhr.getResponseHeader("Content-Disposition") || "";
@@ -71,11 +71,11 @@
             link.click();
             link.remove();
             setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
-            mostrarMensagem("Ficha gerada.", false);
+            mostrarMensagem("PDF de consulta gerado.", false);
         };
         xhr.onerror = function () {
             if (botao) botao.disabled = false;
-            mostrarMensagem("Não foi possível gerar a ficha.", true);
+            mostrarMensagem("Não foi possível gerar o PDF de consulta.", true);
         };
         xhr.send();
     }
@@ -101,7 +101,7 @@
                 "<td>" + escapar(evento.situacao) + "</td>" +
                 "<td><div class=\"producao-acoes\">" +
                 "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"ver\" data-id=\"" + escapar(evento.id) + "\">Ver produção</button>" +
-                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar ordem de serviço</button>" +
+                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar ficha para consulta</button>" +
                 "</div></td></tr>"
             );
         }).join("");

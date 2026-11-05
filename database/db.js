@@ -11,24 +11,15 @@ const DB_DIR = __dirname;
 const DB_PATH = process.env.DATABASE_PATH
   ? path.resolve(process.env.DATABASE_PATH)
   : path.join(DB_DIR, 'database.sqlite');
-const MIGRATIONS_DIR = path.join(DB_DIR, 'migrations');
+const MIGRATIONS_DIR = process.env.MIGRATIONS_DIR
+  ? path.resolve(process.env.MIGRATIONS_DIR)
+  : path.join(DB_DIR, 'migrations');
 
-/**
- * Migrações nesta lista não rodam no start do servidor.
- * O teste autoriza uma delas com MIGRACOES_AUTORIZADAS=004_documentos_versoes.sql
- * e um DATABASE_PATH temporário. Sem essa variável, o banco real permanece intacto.
- */
-const MIGRACOES_SUSPENSAS = {
-  '004_documentos_versoes.sql': true
-};
-
-function migracaoSuspensa(file) {
-  if (!MIGRACOES_SUSPENSAS[file]) return false;
-  const autorizadas = String(process.env.MIGRACOES_AUTORIZADAS || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return autorizadas.indexOf(file) === -1;
+function falhaMigracao(arquivo, causa) {
+  const erro = new Error('Migração ' + arquivo + ' falhou: ' + (causa && causa.message ? causa.message : causa));
+  erro.code = 'migracao';
+  erro.arquivo = arquivo;
+  return erro;
 }
 
 function runMigrations(db) {
@@ -41,7 +32,7 @@ function runMigrations(db) {
   const markStmt = db.prepare('INSERT INTO schema_migrations (name) VALUES (?)');
 
   if (!fs.existsSync(MIGRATIONS_DIR)) {
-    fs.mkdirSync(MIGRATIONS_DIR, { recursive: true });
+    throw falhaMigracao(MIGRATIONS_DIR, new Error('pasta de migrações ausente'));
   }
   const files = fs.readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
@@ -49,29 +40,53 @@ function runMigrations(db) {
 
   for (const file of files) {
     if (doneStmt.get(file)) continue;
-    if (migracaoSuspensa(file)) {
-      console.warn('Migração suspensa, não aplicada: ' + file);
-      continue;
-    }
     const full = path.join(MIGRATIONS_DIR, file);
     const sql = fs.readFileSync(full, 'utf8');
-    db.exec(sql);
-    markStmt.run(file);
+    try {
+      db.exec(sql);
+      markStmt.run(file);
+    } catch (e) {
+      throw falhaMigracao(file, e);
+    }
   }
 }
 
 let _db;
+
+function conferirEsquemaDocumentos(db) {
+  const registrada = db.prepare(
+    "SELECT 1 AS ok FROM schema_migrations WHERE name = '004_documentos_versoes.sql'"
+  ).get();
+  if (!registrada) return;
+  const faltando = ['documentos', 'documento_versoes'].filter((nome) => {
+    return !db.prepare(
+      "SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ?"
+    ).get(nome);
+  });
+  if (!faltando.length) return;
+  throw falhaMigracao(
+    '004_documentos_versoes.sql',
+    new Error('registrada sem as tabelas ' + faltando.join(' e '))
+  );
+}
 
 function getDb() {
   if (!_db) {
     if (!fs.existsSync(DB_DIR)) {
       fs.mkdirSync(DB_DIR, { recursive: true });
     }
-    _db = new DatabaseSync(DB_PATH);
-    _db.exec('PRAGMA journal_mode = WAL;');
-    _db.exec('PRAGMA foreign_keys = ON;');
-    _db.exec('PRAGMA busy_timeout = 5000;');
-    runMigrations(_db);
+    const db = new DatabaseSync(DB_PATH);
+    try {
+      db.exec('PRAGMA journal_mode = WAL;');
+      db.exec('PRAGMA foreign_keys = ON;');
+      db.exec('PRAGMA busy_timeout = 5000;');
+      runMigrations(db);
+      conferirEsquemaDocumentos(db);
+    } catch (e) {
+      try { db.close(); } catch (ignorar) { /* a conexão pode já ter sido encerrada */ }
+      throw e;
+    }
+    _db = db;
   }
   return _db;
 }

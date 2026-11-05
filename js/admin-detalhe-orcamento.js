@@ -1076,14 +1076,14 @@
             });
         }
 
-        function baixarPdfDoServidor(caminho, nome) {
+        function baixarPdfDoServidor(caminho, nome, aviso) {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", caminho, true);
             xhr.withCredentials = true;
             xhr.responseType = "blob";
             xhr.onload = function () {
                 if (xhr.status !== 200) {
-                    alert("O servidor não gerou o PDF oficial.");
+                    alert(aviso || "O servidor não gerou o PDF.");
                     return;
                 }
                 var url = URL.createObjectURL(xhr.response);
@@ -1096,7 +1096,7 @@
                 setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
             };
             xhr.onerror = function () {
-                alert("O servidor não gerou o PDF oficial.");
+                alert(aviso || "O servidor não gerou o PDF.");
             };
             xhr.send();
         }
@@ -1107,7 +1107,8 @@
                 if (!orcamentoAtual || !contratoEstaConfirmado(orcamentoAtual)) return;
                 baixarPdfDoServidor(
                     "/api/producao/eventos/" + encodeURIComponent(orcamentoAtual.id) + "/pdf",
-                    "ordem-servico-" + orcamentoAtual.id + ".pdf"
+                    "ordem-servico-" + orcamentoAtual.id + ".pdf",
+                    "Não foi possível gerar o PDF de consulta."
                 );
             });
         }
@@ -1117,7 +1118,7 @@
                 document.activeElement.blur();
             }
             var idPdf = orcamentoAtual.id;
-            baixarPdfDoServidor("/api/orcamentos/" + encodeURIComponent(idPdf) + "/proposta.pdf", "orcamento-" + idPdf + ".pdf");
+            baixarPdfDoServidor("/api/orcamentos/" + encodeURIComponent(idPdf) + "/proposta.pdf", "orcamento-" + idPdf + ".pdf", "Não foi possível gerar o PDF de consulta.");
         });
 
         document.getElementById("btn-contrato").addEventListener("click", function () {
@@ -1174,17 +1175,17 @@
 
             var respostaContrato = apiRequestSync("PATCH", "/api/orcamentos/" + encodeURIComponent(oid), patchContrato);
             if (!respostaContrato.ok) {
-                var textoRecusa = "O servidor não aceitou a alteração. Nenhum PDF oficial foi gerado.";
+                var textoRecusa = "O servidor não aceitou a alteração. Nenhum PDF foi gerado.";
                 try {
                     var corpoRecusa = JSON.parse(respostaContrato.body || "");
-                    if (corpoRecusa && corpoRecusa.erro) textoRecusa = corpoRecusa.erro + " Nenhum PDF oficial foi gerado.";
+                    if (corpoRecusa && corpoRecusa.erro) textoRecusa = corpoRecusa.erro + " Nenhum PDF foi gerado.";
                 } catch (e) { /* resposta sem JSON */ }
                 alert(textoRecusa);
                 return;
             }
             orcamentoAtual = JSON.parse(respostaContrato.body);
             renderOrcamento(orcamentoAtual);
-            baixarPdfDoServidor("/api/orcamentos/" + encodeURIComponent(oid) + "/contrato.pdf", "contrato-" + oid + ".pdf");
+            baixarPdfDoServidor("/api/orcamentos/" + encodeURIComponent(oid) + "/contrato.pdf", "contrato-" + oid + ".pdf", "O contrato foi gravado, mas o PDF não foi gerado.");
         });
 
         document.getElementById("btn-salvar-anexo-contrato").addEventListener("click", function () {

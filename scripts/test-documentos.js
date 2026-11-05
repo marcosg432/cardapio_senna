@@ -115,8 +115,9 @@ async function main() {
     const db = getDb();
     const tabela = db.prepare("SELECT name FROM sqlite_master WHERE name = 'documentos'").get();
     const mig = db.prepare("SELECT name FROM schema_migrations").all().map((row) => row.name);
-    if (tabela) process.exit(2);
-    if (mig.indexOf("004_documentos_versoes.sql") !== -1) process.exit(3);
+    const repetida = db.prepare("SELECT COUNT(*) AS n FROM schema_migrations WHERE name = '004_documentos_versoes.sql'").get().n;
+    if (!tabela) process.exit(2);
+    if (mig.indexOf("004_documentos_versoes.sql") === -1 || repetida !== 1) process.exit(3);
     if (mig.indexOf("003_financeiro.sql") === -1) process.exit(4);
     closeDb();
   `);

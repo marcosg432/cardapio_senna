@@ -1,5 +1,6 @@
 const { getDb } = require('../db');
 const dinheiro = require('../dinheiro');
+const { dataEventoIso: dataDoEvento, dataIso } = require('../dataEvento');
 
 const FORMAS = ['pix', 'dinheiro', 'transferencia', 'cartao', 'boleto', 'outro'];
 const CAMPOS_PAGAMENTO = ['valor_centavos', 'pago_em', 'forma', 'chave_idempotencia'];
@@ -22,15 +23,7 @@ function tipoEvento(orcamento) {
 }
 
 function dataEventoIso(orcamento) {
-  const texto = String((orcamento && (orcamento.data_evento || orcamento.evento_data)) || '').trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
-  if (!match) return null;
-  const ano = Number(match[1]);
-  const mes = Number(match[2]);
-  const dia = Number(match[3]);
-  const data = new Date(ano, mes - 1, dia);
-  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) return null;
-  return match[1] + '-' + match[2] + '-' + match[3];
+  return dataDoEvento(orcamento);
 }
 
 function hojeLocal(referencia) {
@@ -41,7 +34,7 @@ function hojeLocal(referencia) {
 }
 
 function dataCivilValida(texto, referencia) {
-  const iso = dataEventoIso({ data_evento: texto });
+  const iso = dataIso(texto);
   if (!iso) return false;
   return iso <= hojeLocal(referencia);
 }

@@ -20,6 +20,10 @@ try {
   require('./database/db').getDb();
   apiDbReady = true;
 } catch (e) {
+  if (e && e.code === 'migracao') {
+    console.error(e.message);
+    process.exit(1);
+  }
   console.warn('SQLite indisponível — /api/* retornará 503; site estático continua:', e.message);
 }
 

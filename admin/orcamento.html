@@ -274,8 +274,9 @@
                     <button type="button" class="admin-btn" id="btn-confirmar-contrato">Confirmar contrato</button>
                     <a class="admin-btn admin-btn-sec" id="btn-ver-financeiro" href="gestao/financeiro.html" hidden>Ver financeiro</a>
                     <a class="admin-btn" id="btn-registrar-pagamento" href="gestao/financeiro.html" hidden>Registrar pagamento</a>
-                    <button type="button" class="admin-btn admin-btn-sec" id="btn-ordem-servico" hidden>Gerar ordem de serviço</button>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-ordem-servico" hidden>Gerar ficha para consulta</button>
                 </div>
+                <p class="admin-campo-ajuda">A ficha gerada aqui é para consulta e não entra no histórico oficial.</p>
                 <label for="os-cerimonialista">Cerimonialista</label>
                 <input type="text" id="os-cerimonialista" maxlength="200" autocomplete="off" placeholder="Nome da pessoa ou empresa">
                 <label for="os-suportes">Suportes</label>
@@ -288,11 +289,12 @@
 
                 <div class="admin-acoes">
                     <button type="button" class="admin-btn" id="btn-salvar">Salvar alterações</button>
-                    <button type="button" class="admin-btn" id="btn-pdf-orcamento" style="background:#6d5345">Gerar orçamento PDF</button>
+                    <button type="button" class="admin-btn" id="btn-pdf-orcamento" style="background:#6d5345">Gerar orçamento para consulta</button>
                     <button type="button" class="admin-btn admin-btn-sec" id="btn-contrato">Gerar contrato (PDF)</button>
                     <a class="admin-btn admin-btn-sec" id="btn-historico-pdf" href="gestao/documentos.html">Histórico de versões</a>
                     <button type="button" class="admin-btn admin-btn-sec" id="btn-voltar">Voltar à lista</button>
                 </div>
+                <p class="admin-campo-ajuda">O orçamento em PDF é um arquivo de consulta e não entra no histórico. «Gerar contrato (PDF)» grava os dados do contrato neste orçamento antes de baixar o arquivo. As versões oficiais são emitidas em Gestão → Documentos.</p>
             </div>
         </div>
     </div>

@@ -1,3 +1,5 @@
+const { dataIso: dataIsoUnica, dataEventoIso } = require('../database/dataEvento');
+
 const MODALIDADES = {
   'Apenas retirada dos doces sem entrega': 'Retirada',
   'Apenas entrega sem montagem': 'Entrega',
@@ -18,14 +20,7 @@ function confirmado(orcamento) {
 }
 
 function dataIso(valor) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(valor || '').trim());
-  if (!match) return null;
-  const ano = Number(match[1]);
-  const mes = Number(match[2]);
-  const dia = Number(match[3]);
-  const data = new Date(ano, mes - 1, dia);
-  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) return null;
-  return match[1] + '-' + match[2] + '-' + match[3];
+  return dataIsoUnica(valor);
 }
 
 function formatarIso(iso) {
@@ -144,7 +139,7 @@ function lerModalidade(orcamento) {
 }
 
 function montarEvento(orcamento) {
-  const data = dataIso(orcamento && (orcamento.data_evento || orcamento.evento_data));
+  const data = dataEventoIso(orcamento);
   const tipo = textoLimpo(orcamento && (orcamento.tipo_evento || orcamento.evento_tipo));
   const convidados = lerConvidados(orcamento && orcamento.convidados);
   const entrega = lerHorario(orcamento && orcamento.evento_horario_entrega);
