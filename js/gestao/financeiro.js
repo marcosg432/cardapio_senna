@@ -21,6 +21,8 @@
     var contratoAberto = null;
     var lancamento = null;
     var enviando = false;
+    var contratosTodos = [];
+    var fichas = {};
     var FORMAS = {
         pix: "PIX",
         dinheiro: "Dinheiro",
@@ -111,19 +113,110 @@
         totalPendente.textContent = formatarCentavos(totais.pendente_centavos);
     }
 
+    function semAcento(valor) {
+        if (typeof GestaoConsulta.semAcento === "function") return GestaoConsulta.semAcento(valor);
+        return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    }
+
+    function lerFiltros() {
+        return {
+            texto: semAcento(valorCampo("financeiro-busca")),
+            inicio: valorCampo("financeiro-data-inicial"),
+            fim: valorCampo("financeiro-data-final")
+        };
+    }
+
+    function valorCampo(id) {
+        var el = document.getElementById(id);
+        return el ? String(el.value || "").trim() : "";
+    }
+
+    function filtrosAtivos(filtros) {
+        return !!(filtros.texto || filtros.inicio || filtros.fim);
+    }
+
+    function textoPesquisavel(contrato) {
+        var extra = fichas[String(contrato.id)] || {};
+        return semAcento([
+            contrato.nome_cliente,
+            contrato.id,
+            extra.contratante,
+            extra.outroNome,
+            extra.casal,
+            extra.numero
+        ].join(" "));
+    }
+
+    function dentroDoPeriodo(contrato, inicio, fim) {
+        if (!inicio && !fim) return true;
+        if (!contrato.data_evento) return false;
+        if (inicio && contrato.data_evento < inicio) return false;
+        if (fim && contrato.data_evento > fim) return false;
+        return true;
+    }
+
+    function selecionarContratos(lista) {
+        var filtros = lerFiltros();
+        if (filtros.inicio && filtros.fim && filtros.inicio > filtros.fim) {
+            return { itens: [], aviso: "A data inicial é posterior à data final." };
+        }
+        return {
+            itens: (lista || []).filter(function (contrato) {
+                if (!dentroDoPeriodo(contrato, filtros.inicio, filtros.fim)) return false;
+                if (!filtros.texto) return true;
+                return textoPesquisavel(contrato).indexOf(filtros.texto) !== -1;
+            }),
+            aviso: ""
+        };
+    }
+
+    function atualizarResumo(total, visiveis, ativo) {
+        var resumo = document.getElementById("financeiro-busca-resumo");
+        if (!resumo) return;
+        if (!total || !ativo) {
+            resumo.textContent = "";
+            return;
+        }
+        resumo.textContent = visiveis + " de " + total + (total === 1 ? " contrato." : " contratos.");
+    }
+
     function desenharLista(dados) {
-        var contratos = dados.contratos || [];
+        contratosTodos = dados.contratos || [];
         preencherTotais(dados.totais || {});
-        if (!contratos.length) {
+        renderLista();
+    }
+
+    function renderLista() {
+        var filtros = document.getElementById("financeiro-filtros");
+        var semResultado = document.getElementById("financeiro-sem-resultado");
+        if (!contratosTodos.length) {
+            if (filtros) filtros.hidden = true;
             estado.hidden = false;
             estado.textContent = "Nenhum contrato confirmado. Confirme o contrato na tela de detalhes ou em Gestão, Contratos. O pagamento só aparece depois dessa confirmação.";
             tabela.hidden = true;
+            if (semResultado) semResultado.hidden = true;
+            atualizarResumo(0, 0, false);
             corpo.innerHTML = "";
             return;
         }
+        if (filtros) filtros.hidden = false;
+        var selecionados = selecionarContratos(contratosTodos);
+        var ativos = filtrosAtivos(lerFiltros());
+        atualizarResumo(contratosTodos.length, selecionados.itens.length, ativos);
+        if (!selecionados.itens.length) {
+            estado.hidden = true;
+            tabela.hidden = true;
+            if (semResultado) {
+                semResultado.hidden = false;
+                semResultado.textContent = selecionados.aviso || "Nenhum contrato encontrado com esses filtros.";
+            }
+            corpo.innerHTML = "";
+            return;
+        }
+        if (semResultado) semResultado.hidden = true;
         estado.hidden = true;
         tabela.hidden = false;
-        corpo.innerHTML = contratos.map(function (contrato) {
+        corpo.innerHTML = selecionados.itens.map(function (contrato) {
             var data = contrato.data_evento ? GestaoConsulta.formatarDataIso(contrato.data_evento) : "—";
             var contratado = contrato.congelado ? formatarCentavos(contrato.valor_contratado_centavos) : "Não congelado";
             var recebido = contrato.congelado ? formatarCentavos(contrato.recebido_centavos) : "—";
@@ -139,6 +232,29 @@
                 "</tr>"
             );
         }).join("");
+    }
+
+    function montarFichas(lista) {
+        fichas = {};
+        (lista || []).forEach(function (orcamento) {
+            if (!orcamento || orcamento.id == null) return;
+            fichas[String(orcamento.id)] = {
+                contratante: orcamento.nome_cliente || "",
+                outroNome: orcamento.cliente || "",
+                casal: orcamento.contato_nome || orcamento.nome_casal || orcamento.casal || "",
+                numero: orcamento.contrato_numero_exibicao || ""
+            };
+        });
+    }
+
+    function limparFiltros() {
+        ["financeiro-busca", "financeiro-data-inicial", "financeiro-data-final"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+        renderLista();
+        var busca = document.getElementById("financeiro-busca");
+        if (busca) busca.focus();
     }
 
     function desenharDetalhe(contrato) {
@@ -330,6 +446,21 @@
     }
 
     document.getElementById("financeiro-demonstrativo").addEventListener("click", gerarDemonstrativo);
+    var formularioFiltros = document.getElementById("financeiro-filtros");
+    if (formularioFiltros) {
+        formularioFiltros.addEventListener("submit", function (evento) {
+            evento.preventDefault();
+            renderLista();
+        });
+    }
+    var campoBusca = document.getElementById("financeiro-busca");
+    if (campoBusca) campoBusca.addEventListener("input", renderLista);
+    ["financeiro-data-inicial", "financeiro-data-final"].forEach(function (id) {
+        var campo = document.getElementById(id);
+        if (campo) campo.addEventListener("change", renderLista);
+    });
+    var botaoLimpar = document.getElementById("financeiro-limpar");
+    if (botaoLimpar) botaoLimpar.addEventListener("click", limparFiltros);
     corpo.addEventListener("click", function (evento) {
         var botao = evento.target.closest("button");
         if (!botao) return;
@@ -353,6 +484,11 @@
             var id = "";
             try { id = new URLSearchParams(window.location.search).get("contrato") || ""; } catch (e) { id = ""; }
             if (id) abrir(id);
+        });
+        GestaoConsulta.carregar(function (erro, dados) {
+            if (erro || !Array.isArray(dados)) return;
+            montarFichas(dados);
+            if (contratosTodos.length) renderLista();
         });
     }
 

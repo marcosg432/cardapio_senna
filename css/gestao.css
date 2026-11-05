@@ -221,6 +221,7 @@
     border: 1px solid rgba(18, 31, 42, 0.08);
     border-radius: 16px;
     box-shadow: 0 10px 30px -24px rgba(18, 31, 42, 0.45);
+    min-width: 0;
 }
 
 .gestao-card {
@@ -276,6 +277,7 @@
 
 .gestao-tabela-reserva {
     margin-top: 0.9rem;
+    max-width: 100%;
     overflow: auto;
     border-radius: 12px;
     border: 1px solid rgba(18, 31, 42, 0.08);
@@ -333,6 +335,36 @@
     margin-top: 0.9rem;
 }
 
+.gestao-filtros.gestao-filtros--busca {
+    grid-template-columns: minmax(0, 1.6fr) minmax(8.5rem, 0.7fr) minmax(8.5rem, 0.7fr) auto;
+    align-items: end;
+    margin-top: 0;
+}
+
+.gestao-limpar {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0.4rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid rgba(18, 31, 42, 0.14);
+    background: #fff;
+    color: #121f2a;
+    font: inherit;
+    font-size: 0.92rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.gestao-busca-resumo {
+    margin: 0.35rem 0 0;
+    min-height: 1.2rem;
+    color: #5c6b78;
+    font-size: 0.88rem;
+}
+
 .gestao-filtros label {
     display: flex;
     flex-direction: column;
@@ -342,6 +374,14 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: #5c6b78;
+}
+
+.gestao-filtros input,
+.gestao-filtros select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .gestao-filtros input,
@@ -820,9 +860,14 @@
     }
 
     .gestao-filtros,
+    .gestao-filtros.gestao-filtros--busca,
     .gestao-mes-cabeca {
         grid-template-columns: 1fr;
         flex-direction: column;
+    }
+
+    .gestao-filtros.gestao-filtros--busca .gestao-limpar {
+        width: 100%;
     }
 
     .gestao-dia {

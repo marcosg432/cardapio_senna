@@ -215,6 +215,7 @@
 
     return {
         escapar: escapar,
+        semAcento: semAcento,
         nomeCliente: nomeCliente,
         dataEvento: dataEvento,
         formatarDataIso: formatarDataIso,

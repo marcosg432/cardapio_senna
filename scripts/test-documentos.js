@@ -106,7 +106,7 @@ async function main() {
   assert(path.resolve(DB_PATH) === path.resolve(tmpDb), "DATABASE_PATH apontou para outro arquivo");
   const antes = assinaturaReal();
   assert(antes.ic === "ok" && antes.n >= 4, "banco real");
-  assert(antes.migracoes.indexOf("004_documentos_versoes.sql") === -1, "004 já está no banco real");
+  assert(antes.migracoes.indexOf("003_financeiro.sql") !== -1, "esquema real");
   assert(antes.pagamentos.length === 1 && antes.pagamentos[0].valor_centavos === 200000, "pagamento real");
 
   const scriptSem = path.join(os.tmpdir(), "candyli-docs-sem-" + Date.now() + ".js");
@@ -364,7 +364,6 @@ async function main() {
   assert(JSON.stringify(depois.pagamentos) === JSON.stringify(antes.pagamentos), "pagamentos reais");
   assert(JSON.stringify(depois.confirmados) === JSON.stringify(antes.confirmados), "confirmações reais");
   assert(JSON.stringify(depois.migracoes) === JSON.stringify(antes.migracoes), "migrações reais");
-  assert(depois.migracoes.indexOf("004_documentos_versoes.sql") === -1, "004 aplicado no real");
   console.log(JSON.stringify({ ok: true, orcamentos: depois.n, hash: depois.hash }));
 }
 

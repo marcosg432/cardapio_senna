@@ -106,7 +106,7 @@ async function main() {
   assert(path.resolve(DB_PATH) === path.resolve(tmpDb), "banco errado");
   const antes = assinaturaReal();
   assert(antes.ic === "ok" && antes.n >= 1, "banco real");
-  assert(antes.migracoes.indexOf("004_documentos_versoes.sql") === -1, "004 no banco real");
+  assert(antes.migracoes.indexOf("003_financeiro.sql") !== -1, "esquema real");
 
   fs.rmSync(tmpDb, { force: true });
   const servidor = spawn(process.execPath, ["server.js"], {
@@ -287,7 +287,7 @@ async function main() {
 
   const depois = assinaturaReal();
   assert(depois.hash === antes.hash && depois.n === antes.n && JSON.stringify(depois.pagamentos) === JSON.stringify(antes.pagamentos), "dados reais");
-  assert(depois.migracoes.indexOf("004_documentos_versoes.sql") === -1, "004 aplicada no real");
+  assert(JSON.stringify(depois.migracoes) === JSON.stringify(antes.migracoes), "migrações reais");
   console.log(JSON.stringify({ ok: true, orcamentos: depois.n }));
 }
 

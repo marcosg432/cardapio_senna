@@ -46,6 +46,20 @@
                         <h2>Contratos confirmados</h2>
                         <p>Cada linha usa o orçamento original. Nenhum pagamento é lançado sozinho.</p>
                     </header>
+                    <form class="gestao-filtros gestao-filtros--busca" id="financeiro-filtros" hidden>
+                        <label for="financeiro-busca">Pesquisar
+                            <input type="search" id="financeiro-busca" placeholder="Nome, casal ou nº do contrato" autocomplete="off" enterkeyhint="search">
+                        </label>
+                        <label for="financeiro-data-inicial">Data inicial
+                            <input type="date" id="financeiro-data-inicial">
+                        </label>
+                        <label for="financeiro-data-final">Data final
+                            <input type="date" id="financeiro-data-final">
+                        </label>
+                        <button type="button" class="gestao-limpar" id="financeiro-limpar">Limpar filtros</button>
+                    </form>
+                    <p class="gestao-busca-resumo" id="financeiro-busca-resumo" aria-live="polite"></p>
+                    <p class="gestao-vazio" id="financeiro-sem-resultado" hidden>Nenhum contrato encontrado com esses filtros.</p>
                     <p class="gestao-vazio" id="financeiro-estado">Carregando contratos…</p>
                     <div class="gestao-tabela-reserva" id="financeiro-tabela" hidden>
                         <table>

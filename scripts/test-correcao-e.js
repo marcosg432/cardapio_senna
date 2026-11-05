@@ -1,6 +1,6 @@
 /**
  * Correções da homologação E. Banco temporário.
- * Não aplica a migração 004 no banco real e não usa a porta 3003.
+ * O banco real só é conferido. Não usa a porta 3003.
  */
 const { spawn } = require("child_process");
 const crypto = require("crypto");
@@ -204,7 +204,7 @@ async function prepararContrato(tmpDb, sessao, id) {
 
 async function main() {
   const antes = assinaturaReal();
-  assert(antes.ic === "ok" && antes.migracoes.indexOf("004_documentos_versoes.sql") === -1, "banco real");
+  assert(antes.ic === "ok" && antes.n >= 1 && antes.migracoes.indexOf("003_financeiro.sql") !== -1, "banco real");
   const hashAsset = hashArquivo(asset);
   fs.rmSync(base, { recursive: true, force: true });
   fs.mkdirSync(conferencia, { recursive: true });
@@ -299,7 +299,7 @@ async function main() {
 
   assert(hashArquivo(asset) === hashAsset, "arquivo original da assinatura");
   const depois = assinaturaReal();
-  assert(depois.hash === antes.hash && depois.n === antes.n && JSON.stringify(depois.pagamentos) === JSON.stringify(antes.pagamentos) && depois.migracoes.indexOf("004_documentos_versoes.sql") === -1, "banco real alterado");
+  assert(depois.hash === antes.hash && depois.n === antes.n && JSON.stringify(depois.pagamentos) === JSON.stringify(antes.pagamentos) && JSON.stringify(depois.migracoes) === JSON.stringify(antes.migracoes), "banco real alterado");
   console.log(JSON.stringify({ ok: true, conferencia: conferencia, orcamentos: depois.n }));
 }
 

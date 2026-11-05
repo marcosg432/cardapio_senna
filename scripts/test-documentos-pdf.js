@@ -1,5 +1,5 @@
 /**
- * Emissão oficial dos cinco PDFs. Banco temporário. Não aplica a migração 004 no banco real.
+ * Emissão oficial dos cinco PDFs. Banco temporário. O banco real só é conferido.
  */
 const { spawn } = require("child_process");
 const crypto = require("crypto");
@@ -109,7 +109,7 @@ function orcamento(id, cliente) {
 async function main() {
   const antes = assinaturaReal();
   assert(antes.ic === "ok" && antes.n >= 1, "banco real");
-  assert(antes.migracoes.indexOf("004_documentos_versoes.sql") === -1, "004 no banco real");
+  assert(antes.migracoes.indexOf("003_financeiro.sql") !== -1, "esquema real");
   fs.rmSync(tmpDb, { force: true });
   fs.mkdirSync(preview, { recursive: true });
   const servidor = spawn(process.execPath, ["server.js"], {
@@ -373,7 +373,7 @@ async function main() {
 
   const depois = assinaturaReal();
   assert(depois.hash === antes.hash && depois.n === antes.n && JSON.stringify(depois.pagamentos) === JSON.stringify(antes.pagamentos), "dados reais");
-  assert(depois.migracoes.indexOf("004_documentos_versoes.sql") === -1, "004 no real");
+  assert(JSON.stringify(depois.migracoes) === JSON.stringify(antes.migracoes), "migrações reais");
   console.log(JSON.stringify({ ok: true, preview: preview, orcamentos: depois.n }));
 }
 

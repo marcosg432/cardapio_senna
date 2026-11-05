@@ -579,7 +579,66 @@
         };
     }
 
+    var MENSAGEM_ITENS_CONFIRMADOS =
+        "Este contrato já foi confirmado. Alterações em produtos, quantidades ou valores exigem revisão contratual.";
+
+    function textoRespostaApi(body) {
+        if (!body) return "";
+        try {
+            var json = JSON.parse(body);
+            if (!json || typeof json !== "object") return "";
+            if (typeof json.erro === "string" && json.erro.trim()) return json.erro.trim();
+            if (typeof json.error === "string" && json.error.trim()) return json.error.trim();
+        } catch (e) { /* corpo não é JSON */ }
+        return "";
+    }
+
+    function mensagemFalhaSalvarItens(status, body) {
+        var api = textoRespostaApi(body);
+        if (status === 400) {
+            return api || "Os dados dos itens não foram aceitos. Confira quantidades e valores.";
+        }
+        if (status === 401) {
+            return "Sua sessão expirou. Entre novamente no painel para salvar os itens.";
+        }
+        if (status === 403) {
+            return "Não foi possível confirmar esta operação. Atualize a página e tente novamente.";
+        }
+        if (status === 404) {
+            return "Orçamento não encontrado. Atualize a lista e abra o pedido de novo.";
+        }
+        if (status === 409) return MENSAGEM_ITENS_CONFIRMADOS;
+        if (!status) {
+            return "Não foi possível falar com o servidor. Verifique a ligação e tente novamente.";
+        }
+        return api || "Não foi possível salvar os itens. Tente novamente.";
+    }
+
+    function aplicarBloqueioItens(confirmado) {
+        var aviso = document.getElementById("itens-contrato-confirmado");
+        if (aviso) {
+            aviso.textContent = MENSAGEM_ITENS_CONFIRMADOS;
+            aviso.hidden = !confirmado;
+        }
+        var ajuda = document.getElementById("itens-editar-ajuda");
+        if (ajuda) ajuda.hidden = !!confirmado;
+        var wrap = document.getElementById("admin-extra-itens-wrap");
+        if (wrap) {
+            wrap.classList.toggle("admin-extra-itens--bloqueado", !!confirmado);
+            if (confirmado) wrap.setAttribute("aria-disabled", "true");
+            else wrap.removeAttribute("aria-disabled");
+        }
+        ["extra-doce-nome", "extra-doce-qtd", "extra-doce-preco", "btn-extra-adicionar-item", "btn-extra-cancelar-edicao"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.disabled = !!confirmado;
+        });
+        var botoes = document.querySelectorAll("#lista-itens button[data-acao-extra]");
+        for (var i = 0; i < botoes.length; i++) botoes[i].disabled = !!confirmado;
+    }
+
     function atualizarUiModoExtra() {
+        var confirmado = contratoEstaConfirmado(orcamentoAtual);
+        if (confirmado) extraItemEdicaoIndex = null;
         var edicao = extraItemEdicaoIndex != null;
         var tit = document.getElementById("extra-doce-titulo");
         var btnOk = document.getElementById("btn-extra-adicionar-item");
@@ -587,7 +646,13 @@
         var hintMin = document.getElementById("extra-doce-hint-min");
         var desc = document.getElementById("extra-doce-descricao");
         if (!tit || !btnOk || !btnCanc) return;
-        if (edicao && orcamentoAtual) {
+        if (confirmado) {
+            tit.textContent = "Incluir doce complementar";
+            if (hintMin) hintMin.hidden = true;
+            if (desc) desc.hidden = true;
+            btnOk.textContent = "Adicionar à lista";
+            btnCanc.hidden = true;
+        } else if (edicao && orcamentoAtual) {
             var itEd = (orcamentoAtual.itens || [])[extraItemEdicaoIndex];
             if (itEd && itEd.extra_pedido_admin === true) {
                 tit.textContent = "Editar doce complementar";
@@ -614,6 +679,7 @@
         }
         btnOk.textContent = edicao ? "Salvar alterações do item" : "Adicionar à lista";
         btnCanc.hidden = !edicao;
+        aplicarBloqueioItens(confirmado);
     }
 
     function sairModoEdicaoExtra() {
@@ -643,16 +709,37 @@
      * @returns {boolean} false se falhou salvar.
      */
     function persistirItensOrcamento(lista) {
+        if (contratoEstaConfirmado(orcamentoAtual)) {
+            alert(MENSAGEM_ITENS_CONFIRMADOS);
+            return false;
+        }
+        var itensAntes = orcamentoAtual.itens;
+        var voAntes = orcamentoAtual.valor_original;
         var vo = somaSubtotalItens(lista);
         orcamentoAtual.itens = lista;
         orcamentoAtual.valor_original = vo;
         var patch = patchComumExtra();
-        var atualizado = atualizarOrcamentoParcial(orcamentoAtual.id, patch);
-        if (!atualizado) {
-            orcamentoAtual = getOrcamentoPorId(orcamentoAtual.id);
-            alert("Não foi possível salvar os itens. Tente novamente.");
-            renderOrcamento(orcamentoAtual);
-            atualizarPreviewFinal(orcamentoAtual);
+        var resposta = apiRequestSync("PATCH", "/api/orcamentos/" + encodeURIComponent(orcamentoAtual.id), patch);
+        var atualizado = null;
+        if (resposta.ok && resposta.body) {
+            try {
+                atualizado = JSON.parse(resposta.body);
+            } catch (e) {
+                atualizado = null;
+            }
+        }
+        if (!atualizado || atualizado.id == null) {
+            var fresco = getOrcamentoPorId(orcamentoAtual.id);
+            if (fresco) orcamentoAtual = fresco;
+            else {
+                orcamentoAtual.itens = itensAntes;
+                orcamentoAtual.valor_original = voAntes;
+            }
+            alert(mensagemFalhaSalvarItens(resposta.status, resposta.body));
+            if (orcamentoAtual) {
+                renderOrcamento(orcamentoAtual);
+                atualizarPreviewFinal(orcamentoAtual);
+            }
             return false;
         }
         orcamentoAtual = atualizado;
@@ -1123,6 +1210,7 @@
         document.getElementById("lista-itens").addEventListener("click", function (ev) {
             var btn = ev.target.closest("button[data-acao-extra][data-item-index]");
             if (!btn || !orcamentoAtual) return;
+            if (contratoEstaConfirmado(orcamentoAtual)) return;
             var acao = btn.getAttribute("data-acao-extra");
             var idx = parseInt(btn.getAttribute("data-item-index"), 10);
             if (!Number.isFinite(idx)) return;
@@ -1161,6 +1249,10 @@
         });
 
         document.getElementById("btn-extra-adicionar-item").addEventListener("click", function () {
+            if (contratoEstaConfirmado(orcamentoAtual)) {
+                alert(MENSAGEM_ITENS_CONFIRMADOS);
+                return;
+            }
             var nome = (document.getElementById("extra-doce-nome").value || "").trim();
             var q = parseInt(document.getElementById("extra-doce-qtd").value, 10);
             var precoUnit = parsePrecoExtra(document.getElementById("extra-doce-preco").value);
