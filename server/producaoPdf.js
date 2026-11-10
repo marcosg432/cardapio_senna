@@ -24,6 +24,17 @@ function emitirEvento(id) {
   return { status: 200, arquivo: documento.arquivo, buffer: Buffer.from(documento.pdf) };
 }
 
+function emitirPeriodo(inicio, fim, visao) {
+  const resultado = producaoRepo.periodo(inicio, fim, visao);
+  if (!resultado || resultado.status !== 200) {
+    return { status: resultado && resultado.status ? resultado.status : 500, motivo: resultado && resultado.motivo };
+  }
+  const documento = geradores().dia(resultado.periodo, { baixar: false, bytes: true });
+  const arquivo = (resultado.periodo.visao === 'planejamento' ? 'planejamento-' : 'producao-periodo-')
+    + resultado.periodo.inicio + '-' + resultado.periodo.fim + '.pdf';
+  return { status: 200, arquivo: arquivo, buffer: Buffer.from(documento.pdf) };
+}
+
 function emitirDia(iso) {
   const resultado = producaoRepo.dia(iso);
   if (!resultado || resultado.status !== 200) {
@@ -46,6 +57,7 @@ function desenharDia(dia, opcoes) {
 module.exports = {
   emitirEvento: emitirEvento,
   emitirDia: emitirDia,
+  emitirPeriodo: emitirPeriodo,
   desenharEvento: desenharEvento,
   desenharDia: desenharDia
 };

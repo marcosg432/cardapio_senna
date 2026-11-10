@@ -23,7 +23,7 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">A ordem de serviço é a ficha dos contratos confirmados. Ela não leva preços. Orçamento sem confirmação não entra na produção, mesmo quando já existe PDF. A lista acompanha os produtos atuais do contrato. Os PDFs desta tela são para consulta e não entram no histórico. As versões oficiais são emitidas em Gestão → Documentos.</p>
+                <p class="gestao-intro">A ordem de serviço é a ficha dos contratos confirmados. Ela não leva preços. A coluna Pendências indica data, horário, convidados, modalidade ou quantidade que a cozinha ainda precisa conferir. A falta de unidade não entra nessa coluna. Pedidos ainda não confirmados só aparecem na visão de planejamento.</p>
                 <section class="gestao-painel">
                     <header class="gestao-painel-cabeca">
                         <div>
@@ -36,10 +36,9 @@
                             <thead>
                                 <tr>
                                     <th>Data</th>
-                                    <th>Evento</th>
-                                    <th>Convidados</th>
-                                    <th>Produtos</th>
-                                    <th>Conferência</th>
+                                    <th>Contratante</th>
+                                    <th>Doces</th>
+                                    <th title="Data, horário, convidados, modalidade ou quantidade que ainda precisam ser conferidos.">Pendências</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -98,6 +97,33 @@
                     </div>
                     <div id="producao-dia-eventos"></div>
                     <p class="gestao-mensagem" id="producao-mensagem" hidden></p>
+                </section>
+                <section class="gestao-painel" style="margin-top:0.9rem">
+                    <header class="gestao-painel-cabeca">
+                        <div>
+                            <h2>Produção do período</h2>
+                            <p>Escolha um dia, um intervalo ou a semana. O resumo não leva preços.</p>
+                        </div>
+                    </header>
+                    <form class="gestao-filtros" id="producao-periodo-form">
+                        <label>De
+                            <input id="producao-periodo-de" type="date" required>
+                        </label>
+                        <label>Até
+                            <input id="producao-periodo-ate" type="date" required>
+                        </label>
+                        <label>Visão
+                            <select id="producao-periodo-visao">
+                                <option value="definitiva">Produção definitiva</option>
+                                <option value="planejamento">Planejamento, com pedidos não confirmados</option>
+                            </select>
+                        </label>
+                        <button type="button" class="gestao-limpar" id="producao-semana">Esta semana</button>
+                        <button type="button" class="gestao-confirmar" id="producao-periodo-ver">Ver período</button>
+                        <button type="button" class="gestao-confirmar" id="producao-periodo-pdf">Gerar resumo para consulta</button>
+                    </form>
+                    <p id="producao-periodo-estado" class="gestao-vazio">Escolha o período.</p>
+                    <div id="producao-periodo-resultado"></div>
                 </section>
             </main>
         </div>

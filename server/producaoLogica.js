@@ -1,4 +1,5 @@
 const { dataIso: dataIsoUnica, dataEventoIso } = require('../database/dataEvento');
+const doces = require('../js/doces-quantidade');
 
 const MODALIDADES = {
   'Apenas retirada dos doces sem entrega': 'Retirada',
@@ -96,6 +97,7 @@ function normalizarItem(item) {
     unidade: unidade.informada ? unidade.texto : '',
     unidade_informada: unidade.informada,
     complementar: item.extra_pedido_admin === true,
+    sabor: textoLimpo(item.sabor),
     valido: valido,
     conferencia: !valido
   };
@@ -163,12 +165,23 @@ function montarEvento(orcamento) {
     if (!item.valido) avisos.push('Produto a conferir: ' + item.nome + '.');
   });
   const semUnidade = itens.filter(function (item) { return item.valido && !item.unidade_informada; }).length;
+  const somaDoces = doces.totalDocesPedido(lista || []);
   const conferencia = avisos.length > 0;
   const local = textoLimpo(orcamento && (orcamento.evento_local_festa || orcamento.local || orcamento.local_evento));
   const nome = textoLimpo(orcamento && (orcamento.nome_cliente || orcamento.cliente));
   return {
     id: Number(orcamento.id),
     nome_cliente: nome || null,
+    casal: textoLimpo(orcamento && (orcamento.contato_nome || orcamento.nome_casal || orcamento.casal)) || null,
+    numero_contrato: textoLimpo(orcamento && orcamento.contrato_numero_exibicao) || String(orcamento && orcamento.id || ''),
+    doces_total: somaDoces.total,
+    doces_texto: somaDoces.texto,
+    doces_aviso: somaDoces.pendencias.length
+      ? 'Itens fora da soma: ' + somaDoces.pendencias.map(function (item) {
+        return item.nome + ' (' + item.motivo + ')';
+      }).join('; ')
+      : null,
+    doces_pendencias: somaDoces.pendencias.length,
     local_festa: local || null,
     cerimonialista: textoLimpo(orcamento && orcamento.evento_cerimonialista) || null,
     suportes: textoLivre(orcamento && orcamento.ordem_servico_suportes),
@@ -193,11 +206,16 @@ function montarEvento(orcamento) {
 function resumo(evento) {
   return {
     id: evento.id,
+    nome_cliente: evento.nome_cliente,
+    casal: evento.casal,
+    numero_contrato: evento.numero_contrato,
     tipo_evento: evento.tipo_evento,
     data_evento: evento.data_evento,
     data_texto: evento.data_texto,
     convidados: evento.convidados,
     produtos: evento.produtos,
+    doces_total: evento.doces_total,
+    doces_pendencias: evento.doces_pendencias,
     conferencia: evento.conferencia,
     situacao: evento.situacao
   };
@@ -217,11 +235,12 @@ function agrupar(eventos) {
   eventos.forEach(function (evento) {
     evento.itens.forEach(function (item) {
       if (!item.valido) return;
-      const chave = chaveNome(item.nome) + '\n' + (item.unidade_informada ? item.unidade : '');
+      const sabor = item.sabor || '';
+      const chave = chaveNome(item.nome) + '\n' + chaveNome(sabor) + '\n' + (item.unidade_informada ? item.unidade : '');
       const atual = grupos.get(chave);
       if (!atual) {
         grupos.set(chave, {
-          nome: item.nome,
+          nome: sabor ? item.nome + ' — ' + sabor : item.nome,
           unidade: item.unidade,
           unidade_informada: item.unidade_informada,
           quantidade: item.quantidade,
@@ -244,6 +263,12 @@ function agrupar(eventos) {
   });
 }
 
+function somarDoces(eventos) {
+  return eventos.reduce(function (soma, evento) {
+    return soma + (Number(evento.doces_total) || 0);
+  }, 0);
+}
+
 function montarDia(eventos, iso) {
   const doDia = eventos.filter(function (evento) { return evento.data_evento === iso; });
   return {
@@ -251,6 +276,25 @@ function montarDia(eventos, iso) {
     data_texto: formatarIso(iso),
     eventos: doDia,
     totais: agrupar(doDia),
+    doces_total: somarDoces(doDia),
+    origem: 'itens_atuais'
+  };
+}
+
+function montarPeriodo(eventos, inicio, fim, visao) {
+  const selecionados = eventos.filter(function (evento) {
+    return evento.data_evento && evento.data_evento >= inicio && evento.data_evento <= fim;
+  });
+  return {
+    inicio: inicio,
+    fim: fim,
+    data: inicio,
+    data_texto: formatarIso(inicio) + ' a ' + formatarIso(fim),
+    rotulo: visao === 'planejamento' ? 'Planejamento do período' : 'Produção do período',
+    visao: visao === 'planejamento' ? 'planejamento' : 'definitiva',
+    eventos: selecionados,
+    totais: agrupar(selecionados),
+    doces_total: somarDoces(selecionados),
     origem: 'itens_atuais'
   };
 }
@@ -262,5 +306,6 @@ module.exports = {
   resumo: resumo,
   compararEventos: compararEventos,
   agrupar: agrupar,
-  montarDia: montarDia
+  montarDia: montarDia,
+  montarPeriodo: montarPeriodo
 };

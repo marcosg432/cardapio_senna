@@ -39,6 +39,7 @@ function mensagem(motivo) {
     pdf: 'Esta versão não possui PDF emitido.',
     integridade: 'O arquivo histórico não confere com o hash guardado.',
     chave: 'A chave de emissão é inválida.',
+    aceite: 'Esta versão pertence a uma revisão pendente e só pode ser emitida no aceite administrativo.',
     indisponivel: MOTIVO_EMISSAO
   };
   return textos[motivo] || 'Não foi possível consultar o documento.';

@@ -302,7 +302,7 @@ async function main() {
   }
 
   await abrir(881002);
-  await avaliar("document.getElementById('detalhe-status-contrato').textContent === 'Contrato ainda não confirmado' && document.getElementById('itens-contrato-confirmado').hidden === true && document.getElementById('btn-extra-adicionar-item').disabled === false && document.querySelector('#lista-itens button[data-acao-extra=\"remover\"]').disabled === false");
+  await avaliar("document.getElementById('detalhe-status-contrato').textContent === 'Orçamento em negociação' && document.getElementById('itens-contrato-confirmado').hidden === true && document.getElementById('btn-extra-adicionar-item').disabled === false && document.querySelector('#lista-itens button[data-acao-extra=\"remover\"]').disabled === false");
   await ler("document.getElementById('extra-doce-nome').value = 'Complemento do PDF'; document.getElementById('extra-doce-qtd').value = '1'; document.getElementById('extra-doce-preco').value = '6,00'; document.getElementById('btn-extra-adicionar-item').click(); true");
   await avaliar("document.getElementById('lista-itens').innerText.indexOf('Complemento do PDF') !== -1");
 
@@ -320,7 +320,7 @@ async function main() {
   await ler("document.querySelector('#lista-itens button[data-acao-extra=\"editar\"]').click(); true");
   assert(await ler("document.getElementById('extra-doce-titulo').textContent") === "Incluir doce complementar", "editar confirmado");
   await ler("document.getElementById('os-observacoes').value = 'Separar caixinha extra da equipe'; document.getElementById('btn-salvar-os').click(); true");
-  await avaliar("window.__alertas.indexOf('Ordem de serviço salva.') !== -1");
+  await avaliar("window.__alertas.indexOf('Informações da ordem de serviço salvas.') !== -1");
   ws.close();
 
   const aberto = JSON.parse((await pedir("GET", "/api/orcamentos/881001", { cookie: sessao.cookie })).body);

@@ -23,7 +23,7 @@
                 </div>
             </header>
             <main class="gestao-conteudo">
-                <p class="gestao-intro">Recebimentos dos contratos confirmados manualmente. A entrada prevista permanece separada e não entra no total recebido. O demonstrativo em PDF é gerado pelo servidor com os dados oficiais e não altera os pagamentos.</p>
+                <p class="gestao-intro">Os totais acima reúnem só contratos confirmados. Recebimentos antecipados ficam na lista separada e não confirmam o pedido. A entrada prevista não entra no total recebido. Corrigir um pagamento preserva o lançamento anterior.</p>
                 <section class="gestao-grade gestao-grade--3" aria-label="Totais financeiros">
                     <article class="gestao-card">
                         <h2>Total contratado</h2>
@@ -60,6 +60,7 @@
                     </form>
                     <p class="gestao-busca-resumo" id="financeiro-busca-resumo" aria-live="polite"></p>
                     <p class="gestao-vazio" id="financeiro-sem-resultado" hidden>Nenhum contrato encontrado com esses filtros.</p>
+                    <p class="gestao-nota" id="financeiro-antecipado-resumo" hidden></p>
                     <p class="gestao-vazio" id="financeiro-estado">Carregando contratos…</p>
                     <div class="gestao-tabela-reserva" id="financeiro-tabela" hidden>
                         <table>
@@ -74,6 +75,23 @@
                                 </tr>
                             </thead>
                             <tbody id="financeiro-corpo"></tbody>
+                        </table>
+                    </div>
+                    <h3 class="gestao-subtitulo">Pagamentos antecipados</h3>
+                    <p class="gestao-vazio" id="financeiro-antecipado-vazio">Nenhum recebimento antecipado.</p>
+                    <div class="gestao-tabela-reserva" id="financeiro-antecipado-tabela" hidden>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Data do evento</th>
+                                    <th>Valor atual</th>
+                                    <th>Recebido</th>
+                                    <th>Saldo</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="financeiro-antecipado-corpo"></tbody>
                         </table>
                     </div>
                 </section>
@@ -99,7 +117,9 @@
                     <p class="gestao-nota" id="financeiro-detalhe-entrada"></p>
                     <h3 class="gestao-subtitulo">Histórico de pagamentos</h3>
                     <div id="financeiro-historico"></div>
-                    <p class="gestao-vazio" id="financeiro-sem-congelamento" hidden>O valor deste contrato ainda não foi congelado. Nenhum pagamento pode ser registrado até a inicialização financeira.</p>
+                    <p class="gestao-nota" id="financeiro-situacao"></p>
+                    <p class="gestao-vazio" id="financeiro-sem-congelamento" hidden>O valor deste contrato confirmado ainda não foi congelado. Nenhum pagamento pode ser registrado até a inicialização financeira.</p>
+                    <p class="gestao-nota" id="financeiro-retificacao" hidden>Há demonstrativo oficial emitido. Esta correção não o altera. Emita uma nova versão se o documento precisar ser retificado.</p>
                     <form class="gestao-filtros gestao-form-pagamento" id="financeiro-form" hidden>
                         <label>Valor recebido
                             <input id="financeiro-valor" inputmode="decimal" autocomplete="off" placeholder="0,00" required>
@@ -132,11 +152,46 @@
             <p class="gestao-kicker">Registrar pagamento</p>
             <h2 id="financeiro-modal-titulo">Confirmar lançamento</h2>
             <p id="financeiro-modal-resumo"></p>
-            <p class="gestao-modal-aviso">O valor será somado aos recebimentos deste contrato. A entrada prevista continua fora dessa conta.</p>
+            <p class="gestao-modal-aviso" id="financeiro-modal-aviso">O valor será somado aos recebimentos deste pedido. A entrada prevista continua fora dessa conta. O lançamento não confirma o contrato.</p>
             <p class="gestao-modal-erro" id="financeiro-modal-erro" hidden></p>
             <div class="gestao-modal-acoes">
                 <button type="button" id="financeiro-modal-cancelar">Cancelar</button>
                 <button type="button" id="financeiro-modal-confirmar">Confirmar pagamento</button>
+            </div>
+        </div>
+    </div>
+    <div class="gestao-modal" id="financeiro-correcao-modal" hidden>
+        <div class="gestao-modal-card" role="dialog" aria-modal="true" aria-labelledby="financeiro-correcao-titulo">
+            <p class="gestao-kicker">Corrigir pagamento</p>
+            <h2 id="financeiro-correcao-titulo">Confirmar correção</h2>
+            <p id="financeiro-correcao-resumo"></p>
+            <label>Novo valor
+                <input id="financeiro-correcao-valor" inputmode="decimal" autocomplete="off">
+            </label>
+            <label>Nova data
+                <input id="financeiro-correcao-data" type="date">
+            </label>
+            <label>Nova forma
+                <select id="financeiro-correcao-forma">
+                    <option value="pix">PIX</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="transferencia">Transferência</option>
+                    <option value="cartao">Cartão</option>
+                    <option value="boleto">Boleto</option>
+                    <option value="outro">Outro</option>
+                </select>
+            </label>
+            <label>Observação
+                <input id="financeiro-correcao-obs" maxlength="500" autocomplete="off">
+            </label>
+            <label>Motivo da correção
+                <input id="financeiro-correcao-motivo" maxlength="500" autocomplete="off" required>
+            </label>
+            <p class="gestao-modal-aviso">O histórico anterior permanece. Nenhum estorno é criado.</p>
+            <p class="gestao-modal-erro" id="financeiro-correcao-erro" hidden></p>
+            <div class="gestao-modal-acoes">
+                <button type="button" id="financeiro-correcao-cancelar">Cancelar</button>
+                <button type="button" id="financeiro-correcao-confirmar">Confirmar correção</button>
             </div>
         </div>
     </div>

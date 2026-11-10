@@ -129,6 +129,7 @@ function cliente() {
   };
   vm.createContext(sandbox);
   const codigo = [
+    fs.readFileSync(path.join(raiz, 'js', 'doces-quantidade.js'), 'utf8'),
     fs.readFileSync(path.join(raiz, 'js', 'config.js'), 'utf8'),
     fs.readFileSync(path.join(raiz, 'js', 'orcamentos-logic.js'), 'utf8'),
     fs.readFileSync(path.join(raiz, 'js', 'orcamentos-compat.js'), 'utf8'),
@@ -226,6 +227,11 @@ function eventoDesenho(evento, operacional) {
     cerimonialista: evento.cerimonialista || null,
     suportes: evento.suportes || null,
     observacoes_os: evento.observacoes_os || null,
+    numero_contrato: evento.numero_contrato || null,
+    planejamento: evento.planejamento === true,
+    doces_texto: evento.doces_texto || null,
+    doces_aviso: evento.doces_aviso || null,
+    doces_total: typeof evento.doces_total === 'number' ? evento.doces_total : null,
     avisos: evento.avisos || [],
     itens: (evento.itens || []).map(itemDesenho),
     operacional: operacional || null

@@ -20,8 +20,10 @@
 
     var contratoAberto = null;
     var lancamento = null;
+    var correcaoAberta = null;
     var enviando = false;
     var contratosTodos = [];
+    var antecipadosTodos = [];
     var fichas = {};
     var FORMAS = {
         pix: "PIX",
@@ -107,10 +109,52 @@
         xhr.send(corpo ? JSON.stringify(corpo) : null);
     }
 
-    function preencherTotais(totais) {
+    function preencherTotais(totais, antecipados) {
         totalContratado.textContent = formatarCentavos(totais.contratado_centavos);
         totalRecebido.textContent = formatarCentavos(totais.recebido_centavos);
         totalPendente.textContent = formatarCentavos(totais.pendente_centavos);
+        var nota = document.getElementById("financeiro-antecipado-resumo");
+        if (!nota) return;
+        var recebido = antecipados && antecipados.recebido_centavos;
+        if (!recebido) {
+            nota.hidden = true;
+            nota.textContent = "";
+            return;
+        }
+        nota.hidden = false;
+        nota.textContent = "Recebido em pedidos ainda não confirmados: " + formatarCentavos(recebido) + ". Esse valor não entra no total contratado.";
+    }
+
+    function podeLancar(contrato) {
+        if (!contrato) return false;
+        if (contrato.situacao === "negociacao" || contrato.situacao === "antecipado") return true;
+        return !!contrato.congelado;
+    }
+
+    function textoValor(contrato) {
+        if (contrato.valor_atual_centavos == null && contrato.valor_contratado_centavos == null) return "Não congelado";
+        return formatarCentavos(contrato.valor_atual_centavos != null ? contrato.valor_atual_centavos : contrato.valor_contratado_centavos);
+    }
+
+    function textoSaldo(contrato) {
+        if (contrato.pendente_centavos == null) return "—";
+        if (contrato.pendente_centavos < 0) return "Crédito a regularizar " + formatarCentavos(-contrato.pendente_centavos);
+        return formatarCentavos(contrato.pendente_centavos);
+    }
+
+    function linhaContrato(contrato) {
+        var data = contrato.data_evento ? GestaoConsulta.formatarDataIso(contrato.data_evento) : "—";
+        var recebido = contrato.recebido_centavos == null ? "—" : formatarCentavos(contrato.recebido_centavos);
+        return (
+            "<tr data-id=\"" + escapar(contrato.id) + "\">" +
+            "<td>" + escapar(contrato.nome_cliente || "Orçamento") + "</td>" +
+            "<td>" + escapar(data) + "</td>" +
+            "<td>" + escapar(textoValor(contrato)) + "</td>" +
+            "<td>" + escapar(recebido) + "</td>" +
+            "<td>" + escapar(textoSaldo(contrato)) + "</td>" +
+            "<td><button type=\"button\" class=\"gestao-confirmar\" data-id=\"" + escapar(contrato.id) + "\">Ver financeiro</button></td>" +
+            "</tr>"
+        );
     }
 
     function semAcento(valor) {
@@ -182,21 +226,40 @@
 
     function desenharLista(dados) {
         contratosTodos = dados.contratos || [];
-        preencherTotais(dados.totais || {});
+            antecipadosTodos = dados.antecipados || [];
+            preencherTotais(dados.totais || {}, dados.totais_antecipados || {});
         renderLista();
+    }
+
+    function desenharAntecipados() {
+        var antecipados = selecionarContratos(antecipadosTodos);
+        var corpoAntecipado = document.getElementById("financeiro-antecipado-corpo");
+        var tabelaAntecipada = document.getElementById("financeiro-antecipado-tabela");
+        var vazioAntecipado = document.getElementById("financeiro-antecipado-vazio");
+        if (!corpoAntecipado || !tabelaAntecipada || !vazioAntecipado) return;
+        if (!antecipados.itens.length) {
+            tabelaAntecipada.hidden = true;
+            vazioAntecipado.hidden = false;
+            corpoAntecipado.innerHTML = "";
+            return;
+        }
+        vazioAntecipado.hidden = true;
+        tabelaAntecipada.hidden = false;
+        corpoAntecipado.innerHTML = antecipados.itens.map(linhaContrato).join("");
     }
 
     function renderLista() {
         var filtros = document.getElementById("financeiro-filtros");
         var semResultado = document.getElementById("financeiro-sem-resultado");
         if (!contratosTodos.length) {
-            if (filtros) filtros.hidden = true;
+            if (filtros) filtros.hidden = antecipadosTodos.length === 0;
             estado.hidden = false;
-            estado.textContent = "Nenhum contrato confirmado. Confirme o contrato na tela de detalhes ou em Gestão, Contratos. O pagamento só aparece depois dessa confirmação.";
+            estado.textContent = "Nenhum contrato confirmado. Recebimentos antecipados, quando existirem, ficam na lista separada e não entram neste total.";
             tabela.hidden = true;
             if (semResultado) semResultado.hidden = true;
             atualizarResumo(0, 0, false);
             corpo.innerHTML = "";
+            desenharAntecipados();
             return;
         }
         if (filtros) filtros.hidden = false;
@@ -211,27 +274,14 @@
                 semResultado.textContent = selecionados.aviso || "Nenhum contrato encontrado com esses filtros.";
             }
             corpo.innerHTML = "";
+            desenharAntecipados();
             return;
         }
         if (semResultado) semResultado.hidden = true;
         estado.hidden = true;
         tabela.hidden = false;
-        corpo.innerHTML = selecionados.itens.map(function (contrato) {
-            var data = contrato.data_evento ? GestaoConsulta.formatarDataIso(contrato.data_evento) : "—";
-            var contratado = contrato.congelado ? formatarCentavos(contrato.valor_contratado_centavos) : "Não congelado";
-            var recebido = contrato.congelado ? formatarCentavos(contrato.recebido_centavos) : "—";
-            var pendente = contrato.congelado ? formatarCentavos(contrato.pendente_centavos) : "—";
-            return (
-                "<tr data-id=\"" + escapar(contrato.id) + "\">" +
-                "<td>" + escapar(contrato.nome_cliente || "Orçamento") + "</td>" +
-                "<td>" + escapar(data) + "</td>" +
-                "<td>" + escapar(contratado) + "</td>" +
-                "<td>" + escapar(recebido) + "</td>" +
-                "<td>" + escapar(pendente) + "</td>" +
-                "<td><button type=\"button\" class=\"gestao-confirmar\" data-id=\"" + escapar(contrato.id) + "\">Ver financeiro</button></td>" +
-                "</tr>"
-            );
-        }).join("");
+        corpo.innerHTML = selecionados.itens.map(linhaContrato).join("");
+        desenharAntecipados();
     }
 
     function montarFichas(lista) {
@@ -263,12 +313,19 @@
         document.getElementById("financeiro-detalhe-nome").textContent = contrato.nome_cliente || "Orçamento";
         var data = contrato.data_evento ? GestaoConsulta.formatarDataIso(contrato.data_evento) : "sem data";
         document.getElementById("financeiro-detalhe-meta").textContent = "Evento em " + data + " · Orçamento " + contrato.id;
-        document.getElementById("financeiro-detalhe-contratado").textContent = contrato.congelado
-            ? formatarCentavos(contrato.valor_contratado_centavos) : "—";
-        document.getElementById("financeiro-detalhe-recebido").textContent = contrato.congelado
-            ? formatarCentavos(contrato.recebido_centavos) : "—";
-        document.getElementById("financeiro-detalhe-pendente").textContent = contrato.congelado
-            ? formatarCentavos(contrato.pendente_centavos) : "—";
+        document.getElementById("financeiro-detalhe-contratado").textContent = textoValor(contrato);
+        document.getElementById("financeiro-detalhe-recebido").textContent = contrato.recebido_centavos == null
+            ? "—" : formatarCentavos(contrato.recebido_centavos);
+        document.getElementById("financeiro-detalhe-pendente").textContent = textoSaldo(contrato);
+        var situacao = document.getElementById("financeiro-situacao");
+        if (situacao) {
+            var textos = {
+                negociacao: "Orçamento em negociação. O pagamento antecipado não confirma o contrato.",
+                antecipado: "Pagamento antecipado registrado. O pedido continua editável.",
+                confirmado: contrato.congelado ? "Contrato confirmado." : "Contrato confirmado, com valor ainda não congelado."
+            };
+            situacao.textContent = textos[contrato.situacao] || "";
+        }
         var entrada = contrato.entrada_prevista_centavos;
         document.getElementById("financeiro-detalhe-entrada").textContent = entrada == null
             ? "Entrada prevista: valor indisponível. Ela não entra nos pagamentos recebidos."
@@ -278,17 +335,21 @@
         if (!historico.length) {
             caixa.innerHTML = "<p class=\"gestao-vazio\">Nenhum pagamento registrado.</p>";
         } else {
-            caixa.innerHTML = "<div class=\"gestao-tabela-reserva\"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th></tr></thead><tbody>" +
+            caixa.innerHTML = "<div class=\"gestao-tabela-reserva\"><table><thead><tr><th>Data</th><th>Valor</th><th>Forma</th><th></th></tr></thead><tbody>" +
                 historico.map(function (item) {
                     return "<tr><td>" + escapar(GestaoConsulta.formatarDataIso(item.pago_em)) + "</td><td>" +
                         escapar(formatarCentavos(item.valor_centavos)) + "</td><td>" +
-                        escapar(FORMAS[item.forma] || item.forma) + "</td></tr>";
+                        escapar(FORMAS[item.forma] || item.forma) + "</td><td>" +
+                        "<button type=\"button\" class=\"gestao-confirmar\" data-corrigir=\"" + escapar(item.id) + "\">Corrigir pagamento</button></td></tr>";
                 }).join("") + "</tbody></table></div>";
         }
         var semCongelamento = document.getElementById("financeiro-sem-congelamento");
         var botaoPdf = document.getElementById("financeiro-demonstrativo");
-        semCongelamento.hidden = !!contrato.congelado;
-        formulario.hidden = !contrato.congelado;
+        var legado = contrato.situacao === "confirmado" && !contrato.congelado;
+        semCongelamento.hidden = !legado;
+        formulario.hidden = !podeLancar(contrato);
+        var retificacao = document.getElementById("financeiro-retificacao");
+        if (retificacao) retificacao.hidden = !contrato.retificacao_demonstrativo;
         if (botaoPdf) botaoPdf.hidden = !contrato.congelado;
         document.getElementById("financeiro-data").max = hojeIso();
         mostrarMensagem("");
@@ -344,7 +405,7 @@
 
     function abrirModal(evento) {
         evento.preventDefault();
-        if (!contratoAberto || !contratoAberto.congelado) return;
+        if (!podeLancar(contratoAberto)) return;
         var centavos = reaisParaCentavos(document.getElementById("financeiro-valor").value);
         var data = document.getElementById("financeiro-data").value;
         var forma = document.getElementById("financeiro-forma").value;
@@ -461,11 +522,84 @@
     });
     var botaoLimpar = document.getElementById("financeiro-limpar");
     if (botaoLimpar) botaoLimpar.addEventListener("click", limparFiltros);
+    function abrirCorrecao(id) {
+        var pagamento = (contratoAberto.historico || []).filter(function (item) {
+            return String(item.id) === String(id);
+        })[0];
+        if (!pagamento) return;
+        correcaoAberta = pagamento;
+        document.getElementById("financeiro-correcao-valor").value = (pagamento.valor_centavos / 100).toFixed(2).replace(".", ",");
+        document.getElementById("financeiro-correcao-data").value = pagamento.pago_em;
+        document.getElementById("financeiro-correcao-data").max = hojeIso();
+        document.getElementById("financeiro-correcao-forma").value = pagamento.forma;
+        document.getElementById("financeiro-correcao-obs").value = pagamento.observacao || "";
+        document.getElementById("financeiro-correcao-motivo").value = "";
+        document.getElementById("financeiro-correcao-resumo").textContent = "Lançamento atual de " + formatarCentavos(pagamento.valor_centavos) + ".";
+        document.getElementById("financeiro-correcao-erro").hidden = true;
+        document.getElementById("financeiro-correcao-modal").hidden = false;
+    }
+
+    function enviarCorrecao() {
+        if (!correcaoAberta || !contratoAberto) return;
+        var motivo = document.getElementById("financeiro-correcao-motivo").value.trim();
+        var centavos = reaisParaCentavos(document.getElementById("financeiro-correcao-valor").value);
+        var data = document.getElementById("financeiro-correcao-data").value;
+        if (!motivo || motivo.length < 3) {
+            var erro = document.getElementById("financeiro-correcao-erro");
+            erro.hidden = false;
+            erro.textContent = "Informe o motivo da correção, com pelo menos 3 caracteres.";
+            return;
+        }
+        if (!window.confirm("Salvar a correção deste pagamento? O histórico anterior será preservado.")) return;
+        pedir("POST", "/api/financeiro/contratos/" + encodeURIComponent(contratoAberto.id) + "/pagamentos/" + encodeURIComponent(correcaoAberta.id) + "/corrigir", {
+            valor_centavos: centavos,
+            pago_em: data,
+            forma: document.getElementById("financeiro-correcao-forma").value,
+            observacao: document.getElementById("financeiro-correcao-obs").value,
+            motivo: motivo,
+            confirmacao: true
+        }, function (status, dados) {
+            if (status !== 200) {
+                var falha = document.getElementById("financeiro-correcao-erro");
+                falha.hidden = false;
+                falha.textContent = dados && dados.erro ? dados.erro : "Não foi possível corrigir o pagamento.";
+                return;
+            }
+            var id = contratoAberto.id;
+            correcaoAberta = null;
+            document.getElementById("financeiro-correcao-modal").hidden = true;
+            carregarLista(function () {
+                abrir(id);
+                mostrarMensagem(dados.retificacao_demonstrativo
+                    ? "Correção registrada. O demonstrativo já emitido precisa de nova emissão."
+                    : "Correção registrada.", false);
+            });
+        });
+    }
+
     corpo.addEventListener("click", function (evento) {
         var botao = evento.target.closest("button");
         if (!botao) return;
         abrir(botao.getAttribute("data-id"));
     });
+    var corpoAntecipadoCliques = document.getElementById("financeiro-antecipado-corpo");
+    if (corpoAntecipadoCliques) {
+        corpoAntecipadoCliques.addEventListener("click", function (evento) {
+            var botao = evento.target.closest("button");
+            if (!botao) return;
+            abrir(botao.getAttribute("data-id"));
+        });
+    }
+    document.getElementById("financeiro-historico").addEventListener("click", function (evento) {
+        var botao = evento.target.closest("button[data-corrigir]");
+        if (!botao) return;
+        abrirCorrecao(botao.getAttribute("data-corrigir"));
+    });
+    document.getElementById("financeiro-correcao-cancelar").addEventListener("click", function () {
+        correcaoAberta = null;
+        document.getElementById("financeiro-correcao-modal").hidden = true;
+    });
+    document.getElementById("financeiro-correcao-confirmar").addEventListener("click", enviarCorrecao);
     formulario.addEventListener("submit", abrirModal);
     document.getElementById("financeiro-modal-cancelar").addEventListener("click", function () {
         lancamento = null;

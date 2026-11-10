@@ -38,7 +38,14 @@ function mensagem(motivo) {
     saldo: 'O pagamento ultrapassa o saldo pendente.',
     chave: 'Esta chave de lançamento já foi usada com dados diferentes.',
     confirmacao: 'Contrato não confirmado.',
+    identificacao: 'Informe o nome do cliente antes de registrar o pagamento.',
     congelado: 'O valor contratado ainda não foi congelado.',
+    motivo: 'Informe o motivo da correção, com pelo menos 3 caracteres.',
+    confirmacao_correcao: 'Confirme a correção antes de salvar.',
+    sem_mudanca: 'Nenhum dado do pagamento foi alterado.',
+    observacao: 'A observação do pagamento é inválida.',
+    pagamento: 'Pagamento não encontrado.',
+    usuario: 'Usuário responsável não identificado.',
     valor: 'Valor inválido.',
     data: 'Data inválida.',
     forma: 'Forma de pagamento inválida.',
@@ -77,14 +84,46 @@ function sendPdf(res, id, buffer) {
 }
 
 function handleFinanceiro(req, res, pathname) {
+  const correcao = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/pagamentos\/(\d+)\/corrigir\/?$/);
   const demonstrativo = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/demonstrativo\/?$/);
   const pagamento = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/pagamentos\/?$/);
   const detalhe = pathname.match(/^\/api\/financeiro\/contratos\/(\d+)\/?$/);
   const lista = pathname === '/api/financeiro/contratos' || pathname === '/api/financeiro/contratos/';
-  if (!demonstrativo && !pagamento && !detalhe && !lista) return false;
+  if (!correcao && !demonstrativo && !pagamento && !detalhe && !lista) return false;
 
   const gravacao = req.method !== 'GET' && req.method !== 'HEAD';
   if (!auth.exigirAdmin(req, res, { csrf: gravacao })) return true;
+
+  if (correcao) {
+    if (req.method !== 'POST') {
+      sendJson(res, 405, { erro: 'Método não permitido' });
+      return true;
+    }
+    const sessao = auth.resolverSessao(req);
+    if (!sessao) {
+      sendJson(res, 401, { erro: 'Sessão expirada.' });
+      return true;
+    }
+    lerCorpo(req, (erro, body) => {
+      if (erro) return sendJson(res, 400, { erro: 'Não foi possível corrigir o pagamento.' });
+      try {
+        const resultado = financeiroRepo.corrigirPagamento(correcao[1], correcao[2], body, sessao.usuario_id);
+        if (!resultado) return sendJson(res, 500, { erro: 'Não foi possível corrigir o pagamento.' });
+        if (resultado.status === 404 && !resultado.motivo) return sendJson(res, 404, { erro: 'Contrato não encontrado.' });
+        if (resultado.status !== 200) return sendJson(res, resultado.status, { erro: mensagem(resultado.motivo) });
+        return sendJson(res, 200, {
+          ok: true,
+          pagamento: resultado.pagamento,
+          recebido_centavos: resultado.recebido_centavos,
+          pendente_centavos: resultado.pendente_centavos,
+          retificacao_demonstrativo: resultado.retificacao_demonstrativo === true
+        });
+      } catch (e) {
+        sendJson(res, 500, { erro: 'Não foi possível corrigir o pagamento.' });
+      }
+    });
+    return true;
+  }
 
   if (demonstrativo) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {

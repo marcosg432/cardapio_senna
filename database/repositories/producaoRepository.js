@@ -40,8 +40,35 @@ function dia(iso) {
   return { status: 200, dia: logica.montarDia(eventosConfirmados(), data) };
 }
 
+function eventosPlanejamento() {
+  const ids = new Set(getDb().prepare(`
+    SELECT orcamento_id FROM financeiro_contratos WHERE situacao = 'antecipado' OR congelado = 0
+  `).all().map(function (row) { return Number(row.orcamento_id); }));
+  return lerOrcamentos()
+    .filter(function (orcamento) { return !logica.confirmado(orcamento) && ids.has(Number(orcamento.id)); })
+    .map(function (orcamento) {
+      const evento = logica.montarEvento(orcamento);
+      evento.planejamento = true;
+      return evento;
+    });
+}
+
+function periodo(inicio, fim, visao) {
+  const de = logica.dataIso(inicio);
+  const ate = logica.dataIso(fim);
+  if (!de || !ate || de > ate) return { status: 400, motivo: 'data' };
+  const dias = (Date.parse(ate + 'T00:00:00') - Date.parse(de + 'T00:00:00')) / 86400000;
+  if (dias > 62) return { status: 400, motivo: 'data' };
+  const planejamento = visao === 'planejamento';
+  const eventos = planejamento
+    ? eventosConfirmados().concat(eventosPlanejamento()).sort(logica.compararEventos)
+    : eventosConfirmados();
+  return { status: 200, periodo: logica.montarPeriodo(eventos, de, ate, planejamento ? 'planejamento' : 'definitiva') };
+}
+
 module.exports = {
   listarEventos: listarEventos,
   detalhar: detalhar,
-  dia: dia
+  dia: dia,
+  periodo: periodo
 };

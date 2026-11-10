@@ -92,12 +92,16 @@
         estado.hidden = true;
         tabela.hidden = false;
         corpo.innerHTML = eventos.map(function (evento) {
+            var nome = evento.casal || evento.nome_cliente || "—";
+            var numero = evento.numero_contrato || evento.id;
+            var doces = evento.doces_total == null ? "—" : evento.doces_total;
+            if (evento.doces_pendencias) doces += " · conferir";
             return (
                 "<tr>" +
                 "<td>" + escapar(dataTexto(evento.data_evento)) + "</td>" +
-                "<td>" + escapar(evento.tipo_evento || "—") + "</td>" +
-                "<td>" + escapar(evento.convidados == null ? "—" : evento.convidados) + "</td>" +
-                "<td class=\"producao-qtd\">" + escapar(evento.produtos) + "</td>" +
+                "<td>" + escapar(nome) + "<br>Contrato " + escapar(numero) +
+                (evento.tipo_evento ? "<br>" + escapar(evento.tipo_evento) : "") + "</td>" +
+                "<td class=\"producao-qtd\">" + escapar(doces) + "</td>" +
                 "<td>" + escapar(evento.situacao) + "</td>" +
                 "<td><div class=\"producao-acoes\">" +
                 "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"ver\" data-id=\"" + escapar(evento.id) + "\">Ver produção</button>" +
@@ -214,6 +218,74 @@
             }
             desenharDetalhe(dados);
         });
+    });
+
+    function isoDe(data) {
+        var mes = String(data.getMonth() + 1).padStart(2, "0");
+        var dia = String(data.getDate()).padStart(2, "0");
+        return data.getFullYear() + "-" + mes + "-" + dia;
+    }
+
+    function desenharPeriodo(periodo) {
+        var estadoPeriodo = document.getElementById("producao-periodo-estado");
+        var caixa = document.getElementById("producao-periodo-resultado");
+        var eventos = periodo && periodo.eventos || [];
+        if (!eventos.length) {
+            estadoPeriodo.hidden = false;
+            estadoPeriodo.textContent = periodo && periodo.visao === "planejamento"
+                ? "Nenhum evento neste período, nem entre os pedidos antecipados."
+                : "Nenhum contrato confirmado neste período.";
+            caixa.innerHTML = "";
+            return;
+        }
+        estadoPeriodo.hidden = true;
+        var linhas = (periodo.totais || []).map(function (item) {
+            return "<li>" + escapar(item.quantidade_texto) + " · " + escapar(item.nome) +
+                (item.unidade ? " · " + escapar(item.unidade) : "") + "</li>";
+        }).join("");
+        var eventosHtml = eventos.map(function (evento) {
+            var nome = evento.casal || evento.nome_cliente || "Nome não informado";
+            var marca = evento.planejamento ? " · planejamento, ainda não confirmado" : "";
+            return "<li>" + escapar(dataTexto(evento.data_evento)) + " · " + escapar(nome) +
+                " · Contrato " + escapar(evento.numero_contrato || evento.id) + marca +
+                " · " + escapar(evento.doces_total == null ? "—" : evento.doces_total) + " doces</li>";
+        }).join("");
+        caixa.innerHTML = "<p class=\"gestao-nota\">" + escapar(periodo.rotulo || "Produção do período") +
+            " · " + escapar(periodo.data_texto || "") +
+            "<br>Quantidade total de doces: " + escapar(periodo.doces_total) + "</p>" +
+            "<ul>" + linhas + "</ul><ul>" + eventosHtml + "</ul>";
+    }
+
+    function carregarPeriodo() {
+        var de = document.getElementById("producao-periodo-de").value;
+        var ate = document.getElementById("producao-periodo-ate").value;
+        var visao = document.getElementById("producao-periodo-visao").value;
+        if (!de || !ate) return;
+        pedir("/api/producao/periodo?de=" + encodeURIComponent(de) + "&ate=" + encodeURIComponent(ate) + "&visao=" + encodeURIComponent(visao), function (status, dados) {
+            if (status !== 200 || !dados) {
+                mostrarMensagem("Não foi possível consultar o período.", true);
+                return;
+            }
+            desenharPeriodo(dados);
+        });
+    }
+
+    document.getElementById("producao-semana").addEventListener("click", function () {
+        var hoje = new Date();
+        var distancia = hoje.getDay() === 0 ? -6 : 1 - hoje.getDay();
+        var inicio = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + distancia);
+        var fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 6);
+        document.getElementById("producao-periodo-de").value = isoDe(inicio);
+        document.getElementById("producao-periodo-ate").value = isoDe(fim);
+        carregarPeriodo();
+    });
+    document.getElementById("producao-periodo-ver").addEventListener("click", carregarPeriodo);
+    document.getElementById("producao-periodo-pdf").addEventListener("click", function () {
+        var de = document.getElementById("producao-periodo-de").value;
+        var ate = document.getElementById("producao-periodo-ate").value;
+        var visao = document.getElementById("producao-periodo-visao").value;
+        if (!de || !ate) return;
+        baixar("/api/producao/periodo/pdf?de=" + encodeURIComponent(de) + "&ate=" + encodeURIComponent(ate) + "&visao=" + encodeURIComponent(visao), this);
     });
 
     campoData.value = hojeIso();

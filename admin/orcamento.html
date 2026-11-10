@@ -173,6 +173,8 @@
                 <p id="itens-contrato-confirmado" class="admin-itens-confirmado" hidden role="status"></p>
                 <p id="itens-editar-ajuda" class="admin-itens-dica"></p>
                 <ul id="lista-itens" class="admin-lista-itens"></ul>
+                <p id="doces-total" class="admin-doces-total" hidden></p>
+                <p id="doces-pendencias" class="admin-campo-ajuda" hidden></p>
                 <div class="admin-extra-itens" id="admin-extra-itens-wrap">
                     <h3 class="admin-secao-titulo" id="extra-doce-titulo">Incluir doce complementar</h3>
                     <p class="admin-hint-text" id="extra-doce-descricao">Edite qualquer linha com os botões à direita, ou inclua um complemento manual abaixo. Tudo entra no total, no PDF e no WhatsApp.</p>
@@ -269,14 +271,18 @@
 
                 <h3 class="admin-secao-titulo">Ordem de serviço</h3>
                 <p class="admin-campo-ajuda">Estas anotações são da equipe. Elas não entram no orçamento nem no contrato enviados à cliente. O local da festa, a data e os horários continuam nos campos do evento, mais acima.</p>
-                <p id="detalhe-pagamento-aviso" class="admin-campo-ajuda">Confirme o contrato antes de registrar pagamentos.</p>
+                <p id="detalhe-pagamento-aviso" class="admin-campo-ajuda">O pagamento antecipado não confirma o contrato. Produtos e valores continuam editáveis até a confirmação.</p>
                 <div class="admin-acoes">
                     <button type="button" class="admin-btn" id="btn-confirmar-contrato">Confirmar contrato</button>
-                    <a class="admin-btn admin-btn-sec" id="btn-ver-financeiro" href="gestao/financeiro.html" hidden>Ver financeiro</a>
-                    <a class="admin-btn" id="btn-registrar-pagamento" href="gestao/financeiro.html" hidden>Registrar pagamento</a>
-                    <button type="button" class="admin-btn admin-btn-sec" id="btn-ordem-servico" hidden>Gerar ficha para consulta</button>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-revisar-contrato" hidden>Revisar contrato</button>
+                    <button type="button" class="admin-btn" id="btn-aceitar-revisao" hidden>Registrar aceite administrativo</button>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-recusar-revisao" hidden>Recusar revisão</button>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-cancelar-revisao" hidden>Cancelar revisão</button>
+                    <a class="admin-btn admin-btn-sec" id="btn-ver-financeiro" href="gestao/financeiro.html">Ver financeiro</a>
+                    <a class="admin-btn" id="btn-registrar-pagamento" href="gestao/financeiro.html">Registrar pagamento</a>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-ordem-servico">Abrir Ordem de Serviço</button>
                 </div>
-                <p class="admin-campo-ajuda">A ficha gerada aqui é para consulta e não entra no histórico oficial.</p>
+                <p class="admin-campo-ajuda">A ordem de serviço definitiva só abre depois da confirmação. Abrir o PDF não confirma o contrato e não entra no histórico oficial.</p>
                 <label for="os-cerimonialista">Cerimonialista</label>
                 <input type="text" id="os-cerimonialista" maxlength="200" autocomplete="off" placeholder="Nome da pessoa ou empresa">
                 <label for="os-suportes">Suportes</label>
@@ -284,7 +290,7 @@
                 <label for="os-observacoes">Observações para Ordem de Serviço</label>
                 <textarea id="os-observacoes" rows="5" maxlength="4000" placeholder="Reservar suportes, caixinha extra, separação de doces, montagem ou cuidados na entrega."></textarea>
                 <div class="admin-obs-internas-acoes">
-                    <button type="button" class="admin-btn admin-btn-sec" id="btn-salvar-os">Salvar ordem de serviço</button>
+                    <button type="button" class="admin-btn admin-btn-sec" id="btn-salvar-os">Salvar informações da OS</button>
                 </div>
 
                 <div class="admin-acoes">
@@ -300,6 +306,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+    <script src="../js/doces-quantidade.js"></script>
     <script src="../js/config.js"></script>
     <script src="../js/orcamentos-logic.js"></script>
     <script src="../js/orcamentos-compat.js"></script>

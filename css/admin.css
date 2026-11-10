@@ -531,6 +531,18 @@
     opacity: 0.85;
 }
 
+.admin-doces-total {
+    margin: 0.75rem 0 0.35rem;
+    font-weight: 700;
+    color: #5c4033;
+}
+
+.admin-doces-total {
+    margin: 0.75rem 0 0.35rem;
+    font-weight: 700;
+    color: #5c4033;
+}
+
 .admin-obs-internas-acoes {
     display: flex;
     flex-wrap: wrap;

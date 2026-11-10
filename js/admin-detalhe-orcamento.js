@@ -313,7 +313,29 @@
         return !!(gestao && gestao.status === "confirmado" && gestao.confirmado_em);
     }
 
+    function comercialBloqueado() {
+        return contratoEstaConfirmado(orcamentoAtual) && !revisaoEmCurso;
+    }
+
+    function mostrarTotalDoces(itens) {
+        var linha = document.getElementById("doces-total");
+        var aviso = document.getElementById("doces-pendencias");
+        if (!linha || typeof totalDocesPedido !== "function") return;
+        var soma = totalDocesPedido(itens || []);
+        linha.hidden = false;
+        linha.textContent = soma.texto;
+        if (aviso) {
+            aviso.hidden = !soma.pendencias.length;
+            aviso.textContent = soma.pendencias.length
+                ? "Itens fora da soma: " + soma.pendencias.map(function (item) {
+                    return item.nome + " (" + item.motivo + ")";
+                }).join("; ")
+                : "";
+        }
+    }
+
     function atualizarPainelContrato(o) {
+        revisaoPendente = null;
         var confirmado = contratoEstaConfirmado(o);
         var status = document.getElementById("detalhe-status-contrato");
         var botao = document.getElementById("btn-confirmar-contrato");
@@ -321,19 +343,47 @@
         var ver = document.getElementById("btn-ver-financeiro");
         var registrar = document.getElementById("btn-registrar-pagamento");
         var ordem = document.getElementById("btn-ordem-servico");
+        var revisar = document.getElementById("btn-revisar-contrato");
+        var aceitarRevisao = document.getElementById("btn-aceitar-revisao");
+        var recusarRevisao = document.getElementById("btn-recusar-revisao");
+        var cancelarRevisao = document.getElementById("btn-cancelar-revisao");
         var destino = "gestao/financeiro.html?contrato=" + encodeURIComponent(o.id);
-        if (status) status.textContent = confirmado ? "Contrato confirmado" : "Contrato ainda não confirmado";
+        if (status) {
+            if (!confirmado) status.textContent = "Orçamento em negociação";
+            else if (revisaoEmCurso) status.textContent = "Revisão contratual em andamento";
+            else status.textContent = "Contrato confirmado";
+        }
         if (botao) botao.hidden = confirmado;
         if (aviso) aviso.hidden = confirmado;
-        if (ver) {
-            ver.hidden = !confirmado;
-            ver.href = destino;
+        if (ver) ver.href = destino;
+        if (registrar) registrar.href = destino + "#pagamento";
+        if (revisar) {
+            revisar.hidden = !confirmado || !!revisaoPendente;
+            revisar.textContent = revisaoEmCurso ? "Concluir revisão contratual" : "Revisar contrato";
         }
-        if (registrar) {
-            registrar.hidden = !confirmado;
-            registrar.href = destino + "#pagamento";
+        if (aceitarRevisao) aceitarRevisao.hidden = !revisaoPendente;
+        if (recusarRevisao) recusarRevisao.hidden = !revisaoPendente;
+        if (cancelarRevisao) cancelarRevisao.hidden = !revisaoPendente;
+        if (confirmado && !revisaoEmCurso && status) {
+            var xhrRevisao = new XMLHttpRequest();
+            xhrRevisao.open("GET", "/api/orcamentos/" + encodeURIComponent(o.id) + "/revisoes", true);
+            xhrRevisao.withCredentials = true;
+            xhrRevisao.onload = function () {
+                if (xhrRevisao.status !== 200 || !orcamentoAtual || Number(orcamentoAtual.id) !== Number(o.id)) return;
+                var dados = null;
+                try { dados = JSON.parse(xhrRevisao.responseText); } catch (e) { dados = null; }
+                var ultima = dados && dados.revisoes && dados.revisoes[0];
+                revisaoPendente = ultima && ultima.aceite_cliente === "pendente" ? ultima : null;
+                if (revisaoPendente) {
+                    status.textContent = "Contrato com revisão aguardando aceite administrativo";
+                    if (revisar) revisar.hidden = true;
+                    if (aceitarRevisao) aceitarRevisao.hidden = false;
+                    if (recusarRevisao) recusarRevisao.hidden = false;
+                    if (cancelarRevisao) cancelarRevisao.hidden = false;
+                }
+            };
+            xhrRevisao.send();
         }
-        if (ordem) ordem.hidden = !confirmado;
         var cerimonia = document.getElementById("os-cerimonialista");
         var suportes = document.getElementById("os-suportes");
         var observacao = document.getElementById("os-observacoes");
@@ -459,6 +509,7 @@
             li.appendChild(acoes);
             ul.appendChild(li);
         });
+        mostrarTotalDoces(o.itens);
 
         atualizarUiModoExtra();
 
@@ -527,6 +578,8 @@
     var orcamentoAtual = null;
     /** Índice em `orcamentoAtual.itens` ao editar uma linha; null = modo inclusão de complemento. */
     var extraItemEdicaoIndex = null;
+    var revisaoEmCurso = null;
+    var revisaoPendente = null;
 
     function pedidoMinimoPadraoAdmin() {
         if (typeof CONFIG !== "undefined" && CONFIG.pedidoMinimoUnidades != null) {
@@ -637,7 +690,7 @@
     }
 
     function atualizarUiModoExtra() {
-        var confirmado = contratoEstaConfirmado(orcamentoAtual);
+        var confirmado = comercialBloqueado();
         if (confirmado) extraItemEdicaoIndex = null;
         var edicao = extraItemEdicaoIndex != null;
         var tit = document.getElementById("extra-doce-titulo");
@@ -709,9 +762,15 @@
      * @returns {boolean} false se falhou salvar.
      */
     function persistirItensOrcamento(lista) {
-        if (contratoEstaConfirmado(orcamentoAtual)) {
+        if (comercialBloqueado()) {
             alert(MENSAGEM_ITENS_CONFIRMADOS);
             return false;
+        }
+        if (revisaoEmCurso) {
+            orcamentoAtual.itens = lista;
+            orcamentoAtual.valor_original = somaSubtotalItens(lista);
+            renderOrcamento(orcamentoAtual);
+            return true;
         }
         var itensAntes = orcamentoAtual.itens;
         var voAntes = orcamentoAtual.valor_original;
@@ -1046,6 +1105,113 @@
                 xhr.send("{}");
             });
         }
+        var btnRevisar = document.getElementById("btn-revisar-contrato");
+        if (btnRevisar) {
+            btnRevisar.addEventListener("click", function () {
+                if (!orcamentoAtual || !contratoEstaConfirmado(orcamentoAtual)) return;
+                if (revisaoPendente) {
+                    alert("Já existe uma revisão pendente. Registre o aceite administrativo, recuse ou cancele antes de abrir outra.");
+                    return;
+                }
+                if (!revisaoEmCurso) {
+                    var motivo = window.prompt("Motivo da revisão contratual");
+                    if (!motivo || motivo.trim().length < 3) {
+                        alert("Informe o motivo da revisão, com pelo menos 3 caracteres.");
+                        return;
+                    }
+                    if (!window.confirm("A solicitação guarda a proposta sem alterar o contrato vigente, o valor financeiro nem a produção. O aceite administrativo é feito depois e não é a assinatura da cliente.")) return;
+                    revisaoEmCurso = { motivo: motivo.trim() };
+                    renderOrcamento(orcamentoAtual);
+                    return;
+                }
+                if (!window.confirm("Concluir a revisão com os produtos e valores desta tela?")) return;
+                var corpo = {
+                    motivo: revisaoEmCurso.motivo,
+                    confirmacao: true,
+                    patch: Object.assign(patchComumExtra(), {
+                        status: document.getElementById("status-orcamento").value
+                    })
+                };
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/orcamentos/" + encodeURIComponent(orcamentoAtual.id) + "/revisao-contratual", true);
+                xhr.withCredentials = true;
+                xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+                if (typeof adminCsrfToken === "string" && adminCsrfToken) {
+                    xhr.setRequestHeader("X-CSRF-Token", adminCsrfToken);
+                }
+                xhr.onload = function () {
+                    var dados = null;
+                    try { dados = JSON.parse(xhr.responseText); } catch (e) { dados = null; }
+                    if (xhr.status !== 200) {
+                        alert(dados && dados.erro ? dados.erro : "Não foi possível revisar o contrato.");
+                        return;
+                    }
+                    revisaoEmCurso = null;
+                    var fresco = getOrcamentoPorId(orcamentoAtual.id);
+                    if (fresco) {
+                        orcamentoAtual = fresco;
+                        renderOrcamento(fresco);
+                    }
+                    var avisoAceite = "Revisão registrada. O contrato vigente permanece até o aceite administrativo. Esse aceite não é a assinatura da cliente.";
+                    if (dados && dados.retificacao_demonstrativo) {
+                        avisoAceite += " O demonstrativo já emitido precisa de nova emissão.";
+                    }
+                    alert(avisoAceite);
+                };
+                xhr.send(JSON.stringify(corpo));
+            });
+        }
+        function decidirRevisao(acao) {
+            if (!orcamentoAtual || !revisaoPendente) return;
+            var textos = {
+                aceite: "Registrar o aceite administrativo desta revisão? Esta ação não é a assinatura da cliente. Só depois dela o contrato, o valor e a produção passam a usar a proposta.",
+                recusar: "Recusar a revisão? O contrato vigente, os pagamentos e a produção permanecem como estão.",
+                cancelar: "Cancelar a revisão? O contrato vigente, os pagamentos e a produção permanecem como estão."
+            };
+            if (!window.confirm(textos[acao])) return;
+            var motivoDecisao = null;
+            if (acao !== "aceite") {
+                motivoDecisao = window.prompt("Motivo da " + (acao === "recusar" ? "recusa" : "do cancelamento"));
+                if (!motivoDecisao || motivoDecisao.trim().length < 3) {
+                    alert("Informe o motivo, com pelo menos 3 caracteres.");
+                    return;
+                }
+            }
+            var corpo = { confirmacao: true };
+            if (motivoDecisao) corpo.motivo = motivoDecisao.trim();
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/orcamentos/" + encodeURIComponent(orcamentoAtual.id) + "/revisao-contratual/" + encodeURIComponent(revisaoPendente.id) + "/" + acao, true);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+            if (typeof adminCsrfToken === "string" && adminCsrfToken) {
+                xhr.setRequestHeader("X-CSRF-Token", adminCsrfToken);
+            }
+            xhr.onload = function () {
+                var dados = null;
+                try { dados = JSON.parse(xhr.responseText); } catch (e) { dados = null; }
+                if (xhr.status !== 200) {
+                    alert(dados && dados.erro ? dados.erro : "Não foi possível registrar a decisão da revisão.");
+                    return;
+                }
+                var fresco = getOrcamentoPorId(orcamentoAtual.id);
+                if (fresco) {
+                    orcamentoAtual = fresco;
+                    renderOrcamento(fresco);
+                }
+                if (acao === "aceite") {
+                    alert("Aceite administrativo registrado por " + (dados.aceito_usuario_nome || "usuário autenticado") + ". Isto não é a assinatura da cliente.");
+                } else {
+                    alert("Revisão " + (acao === "recusar" ? "recusada" : "cancelada") + ". O contrato vigente permanece.");
+                }
+            };
+            xhr.send(JSON.stringify(corpo));
+        }
+        var btnAceitarRevisao = document.getElementById("btn-aceitar-revisao");
+        if (btnAceitarRevisao) btnAceitarRevisao.addEventListener("click", function () { decidirRevisao("aceite"); });
+        var btnRecusarRevisao = document.getElementById("btn-recusar-revisao");
+        if (btnRecusarRevisao) btnRecusarRevisao.addEventListener("click", function () { decidirRevisao("recusar"); });
+        var btnCancelarRevisao = document.getElementById("btn-cancelar-revisao");
+        if (btnCancelarRevisao) btnCancelarRevisao.addEventListener("click", function () { decidirRevisao("cancelar"); });
         var btnSalvarOs = document.getElementById("btn-salvar-os");
         if (btnSalvarOs) {
             btnSalvarOs.addEventListener("click", function () {
@@ -1070,7 +1236,7 @@
                     if (!fresco) return;
                     orcamentoAtual = fresco;
                     renderOrcamento(fresco);
-                    alert("Ordem de serviço salva.");
+                    alert("Informações da ordem de serviço salvas.");
                 };
                 xhr.send(JSON.stringify(corpo));
             });
@@ -1104,7 +1270,11 @@
         var btnOrdem = document.getElementById("btn-ordem-servico");
         if (btnOrdem) {
             btnOrdem.addEventListener("click", function () {
-                if (!orcamentoAtual || !contratoEstaConfirmado(orcamentoAtual)) return;
+                if (!orcamentoAtual) return;
+                if (!contratoEstaConfirmado(orcamentoAtual)) {
+                    alert("A ordem de serviço definitiva fica disponível depois da confirmação do contrato. Este pedido continua em negociação, e abrir o documento não confirma o contrato.");
+                    return;
+                }
                 baixarPdfDoServidor(
                     "/api/producao/eventos/" + encodeURIComponent(orcamentoAtual.id) + "/pdf",
                     "ordem-servico-" + orcamentoAtual.id + ".pdf",
@@ -1211,7 +1381,7 @@
         document.getElementById("lista-itens").addEventListener("click", function (ev) {
             var btn = ev.target.closest("button[data-acao-extra][data-item-index]");
             if (!btn || !orcamentoAtual) return;
-            if (contratoEstaConfirmado(orcamentoAtual)) return;
+            if (comercialBloqueado()) return;
             var acao = btn.getAttribute("data-acao-extra");
             var idx = parseInt(btn.getAttribute("data-item-index"), 10);
             if (!Number.isFinite(idx)) return;
@@ -1250,7 +1420,7 @@
         });
 
         document.getElementById("btn-extra-adicionar-item").addEventListener("click", function () {
-            if (contratoEstaConfirmado(orcamentoAtual)) {
+            if (comercialBloqueado()) {
                 alert(MENSAGEM_ITENS_CONFIRMADOS);
                 return;
             }

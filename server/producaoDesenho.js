@@ -290,12 +290,26 @@
             } else {
                 ctx.tabela(colunas, linhas);
             }
-            if (evento.observacoes_os) {
-                ctx.garantir(10);
-                ctx.texto('Observações para Ordem de Serviço', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
-                ctx.avancar(5);
-                escreverLivre(ctx, doc, evento.observacoes_os);
+            if (evento.doces_texto) {
                 ctx.avancar(3);
+                ctx.garantir(8);
+                ctx.texto(evento.doces_texto, ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
+                ctx.avancar(6);
+                if (evento.doces_aviso) {
+                    ctx.texto(evento.doces_aviso, ctx.margem, ctx.posicao(), 8, 'normal', ctx.cores.mudo, 'left', ctx.largura);
+                    ctx.avancar(6);
+                }
+            }
+            if (evento.observacoes_os) {
+                ctx.avancar(4);
+                ctx.garantir(16);
+                doc.setDrawColor(ctx.cores.linha[0], ctx.cores.linha[1], ctx.cores.linha[2]);
+                doc.line(ctx.margem, ctx.posicao(), ctx.margem + ctx.largura, ctx.posicao());
+                ctx.avancar(7);
+                ctx.texto('Observações para Ordem de Serviço', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+                ctx.avancar(6);
+                escreverLivre(ctx, doc, evento.observacoes_os);
+                ctx.avancar(6);
             }
             instrucoes(ctx, evento.operacional);
             ctx.garantir(24);
@@ -322,9 +336,14 @@
             author: 'Candy Li Doces Finos',
             subject: 'Produção consolidada do dia'
         });
-        var desenhado = desenhar(doc, opcoes, 'Produção do dia', dia.data_texto || dia.data, function (ctx) {
+        var tituloDia = dia.rotulo || 'Produção do dia';
+        var desenhado = desenhar(doc, opcoes, tituloDia, dia.data_texto || dia.data, function (ctx) {
             ctx.texto(dia.data_texto || 'Data a conferir', ctx.margem, ctx.posicao(), 16, 'bold', ctx.cores.navy);
             ctx.avancar(8);
+            if (dia.visao === 'planejamento') {
+                ctx.texto('Inclui pedidos ainda não confirmados, só para planejamento.', ctx.margem, ctx.posicao(), 9, 'bold', ctx.cores.mudo, 'left', ctx.largura);
+                ctx.avancar(6);
+            }
             ctx.texto('Total da cozinha', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
             ctx.avancar(4);
             if (!dia.totais || !dia.totais.length) {
@@ -345,8 +364,13 @@
                     return linha;
                 }));
             }
+            if (typeof dia.doces_total === 'number') {
+                ctx.garantir(8);
+                ctx.texto('Quantidade total de doces: ' + dia.doces_total, ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
+                ctx.avancar(6);
+            }
             ctx.garantir(8);
-            ctx.texto('Eventos do dia', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
+            ctx.texto(dia.rotulo ? 'Eventos do período' : 'Eventos do dia', ctx.margem, ctx.posicao(), 12, 'bold', ctx.cores.navy);
             ctx.avancar(6);
             if (!dia.eventos || !dia.eventos.length) return;
             dia.eventos.forEach(function (evento) {
@@ -355,7 +379,16 @@
                 ctx.texto(tituloEvento, ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy, 'left', ctx.largura);
                 ctx.avancar(5);
                 if (evento.nome_cliente) {
-                    ctx.texto('Contrato ' + evento.id, ctx.margem, ctx.posicao(), 9, 'normal', ctx.cores.mudo);
+                    var complemento = 'Contrato ' + (evento.numero_contrato || evento.id);
+                    if (evento.planejamento) complemento += ' · planejamento, ainda não confirmado';
+                    ctx.texto(complemento, ctx.margem, ctx.posicao(), 9, 'normal', ctx.cores.mudo);
+                    ctx.avancar(5);
+                } else if (evento.planejamento) {
+                    ctx.texto('Planejamento, ainda não confirmado', ctx.margem, ctx.posicao(), 9, 'bold', ctx.cores.mudo);
+                    ctx.avancar(5);
+                }
+                if (typeof evento.doces_total === 'number') {
+                    ctx.texto('Quantidade total de doces: ' + evento.doces_total, ctx.margem, ctx.posicao(), 9, 'bold', ctx.cores.navy);
                     ctx.avancar(5);
                 }
                 ctx.texto(evento.tipo_evento || 'Evento a conferir', ctx.margem, ctx.posicao(), 10, 'normal', ctx.cores.tinta);

@@ -396,7 +396,13 @@ async function main() {
   assert(salvo.entrada === 30 && salvo.observacoes === "texto original", "payload original mudou");
 
   const aberto = await pedir("POST", "/api/financeiro/contratos/920011/pagamentos", Object.assign({ body: pagamento(100, "pix", "chave-aberto-000001", hoje) }, sessao));
-  assert(aberto.status === 409, "pagamento de contrato aberto " + aberto.status);
+  assert(aberto.status === 201, "pagamento antecipado " + aberto.status + " " + aberto.body);
+  const abertoPedido = JSON.parse((await pedir("GET", "/api/orcamentos/920011", sessao)).body);
+  assert(!abertoPedido.gestao_contrato, "pagamento antecipado confirmou o contrato");
+  const listaAntecipada = JSON.parse((await pedir("GET", "/api/financeiro/contratos", { cookie: cookie })).body);
+  assert(listaAntecipada.antecipados.some((item) => item.id === 920011), "antecipado fora da lista própria");
+  assert(!listaAntecipada.contratos.some((item) => item.id === 920011), "antecipado entrou nos confirmados");
+  assert(listaAntecipada.totais.recebido_centavos === 0, "antecipado entrou no total confirmado");
   const semFreeze = await pedir("POST", "/api/financeiro/contratos/920012/pagamentos", Object.assign({ body: pagamento(100, "pix", "chave-antigo-000001", hoje) }, sessao));
   assert(semFreeze.status === 409, "pagamento sem congelamento " + semFreeze.status);
 

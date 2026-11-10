@@ -96,6 +96,15 @@ function gerarOrcamentoPropostaPDF(orcamento) {
     } else {
         linha("(sem itens)", 6);
     }
+    if (typeof totalDocesPedido === "function") {
+        var somaDocesPdf = totalDocesPedido(orcamento.itens || []);
+        linha(somaDocesPdf.texto, 6);
+        if (somaDocesPdf.pendencias.length) {
+            linha("Itens fora da soma: " + somaDocesPdf.pendencias.map(function (item) {
+                return item.nome + " (" + item.motivo + ")";
+            }).join("; "), 6);
+        }
+    }
 
     var vo =
         typeof valorOriginalOrcamentoComItens === "function"

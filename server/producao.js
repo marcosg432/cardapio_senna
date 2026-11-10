@@ -29,12 +29,15 @@ function mensagem(motivo) {
 }
 
 function handleProducao(req, res, pathname) {
+  const pedido = new URL(req.url || '/', 'http://localhost');
+  const periodoPdf = pedido.pathname === '/api/producao/periodo/pdf';
+  const periodo = periodoPdf || pedido.pathname === '/api/producao/periodo';
   const ficha = pathname.match(/^\/api\/producao\/eventos\/(\d+)\/pdf\/?$/);
   const evento = pathname.match(/^\/api\/producao\/eventos\/(\d+)\/?$/);
   const resumo = pathname.match(/^\/api\/producao\/datas\/(\d{4}-\d{2}-\d{2})\/pdf\/?$/);
   const dia = pathname.match(/^\/api\/producao\/datas\/(\d{4}-\d{2}-\d{2})\/?$/);
   const lista = pathname === '/api/producao/eventos' || pathname === '/api/producao/eventos/';
-  if (!ficha && !evento && !resumo && !dia && !lista) return false;
+  if (!periodo && !ficha && !evento && !resumo && !dia && !lista) return false;
 
   const gravacao = req.method !== 'GET' && req.method !== 'HEAD';
   if (!auth.exigirAdmin(req, res, { csrf: gravacao })) return true;
@@ -44,6 +47,27 @@ function handleProducao(req, res, pathname) {
   }
 
   try {
+    if (periodo) {
+      const visao = pedido.searchParams.get('visao') === 'planejamento' ? 'planejamento' : 'definitiva';
+      if (periodoPdf) {
+        const emissao = producaoPdf.emitirPeriodo(
+          pedido.searchParams.get('de'),
+          pedido.searchParams.get('ate'),
+          visao
+        );
+        if (emissao.status !== 200) sendJson(res, emissao.status, { erro: mensagem(emissao.motivo) });
+        else sendPdf(res, emissao.arquivo, emissao.buffer);
+        return true;
+      }
+      const resultadoPeriodo = producaoRepo.periodo(
+        pedido.searchParams.get('de'),
+        pedido.searchParams.get('ate'),
+        visao
+      );
+      if (resultadoPeriodo.status !== 200) sendJson(res, resultadoPeriodo.status, { erro: mensagem(resultadoPeriodo.motivo) });
+      else sendJson(res, 200, resultadoPeriodo.periodo);
+      return true;
+    }
     if (lista) {
       sendJson(res, 200, producaoRepo.listarEventos());
       return true;

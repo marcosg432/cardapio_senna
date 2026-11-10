@@ -238,6 +238,24 @@ function desenharAnexoContratualModeloPlanilha(ctx) {
         doc.text("(itens conforme orçamento nº " + numContrato + ")", margem + 2, y);
         y += 6;
     }
+    if (typeof totalDocesPedido === "function") {
+        var somaDocesContrato = totalDocesPedido(orcamento.itens || []);
+        garantirEspaco(12);
+        doc.setFont(undefined, "bold");
+        doc.text(somaDocesContrato.texto, margem + 2, y);
+        y += 5;
+        doc.setFont(undefined, "normal");
+        if (somaDocesContrato.pendencias.length) {
+            var avisoDoces = doc.splitTextToSize(
+                "Itens fora da soma: " + somaDocesContrato.pendencias.map(function (item) {
+                    return item.nome + " (" + item.motivo + ")";
+                }).join("; "),
+                maxW - 4
+            );
+            doc.text(avisoDoces, margem + 2, y);
+            y += avisoDoces.length * 4;
+        }
+    }
     doc.setDrawColor(95, 78, 68);
     doc.setLineWidth(0.35);
     doc.rect(margem, yResumoTopo, maxW, y - yResumoTopo + 3);

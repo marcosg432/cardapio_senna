@@ -186,7 +186,8 @@ async function main() {
   assert(!recarregado.gestao_contrato, "ainda nao confirmado");
 
   const financeiroAntes = await pedir("GET", "/api/financeiro/contratos/880501", { cookie: sessao.cookie });
-  assert(financeiroAntes.status === 409, "pagamento antes da confirmacao");
+  const antesJson = JSON.parse(financeiroAntes.body);
+  assert(financeiroAntes.status === 200 && antesJson.situacao === "negociacao" && antesJson.congelado === false, "consulta antes da confirmacao");
 
   const confirmacao = await pedir("POST", "/api/orcamentos/880501/confirmar-contrato", {
     cookie: sessao.cookie,

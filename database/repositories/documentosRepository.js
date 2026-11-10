@@ -316,7 +316,7 @@ function consultaChave(versaoId, chave) {
   return recusar(409, 'chave');
 }
 
-function emitir(entrada) {
+function emitirNaTransacao(db, entrada, gravado) {
   const versaoId = Number(entrada && entrada.versaoId);
   const revisao = Number(entrada && entrada.revisao);
   const chave = entrada && entrada.chave;
@@ -326,70 +326,74 @@ function emitir(entrada) {
   if (!chaveValida(chave)) return recusar(400, 'chave');
   if (!Buffer.isBuffer(pdf) || pdf.length < 1 || pdf.length > LIMITE_PDF) return recusar(400, 'pdf');
   const hashPdf = hashTexto(pdf);
+  const bloqueada = db.prepare(`
+    SELECT id FROM contrato_revisoes
+    WHERE documento_versao_id = ? AND aceite_cliente = 'pendente'
+  `).get(versaoId);
+  if (bloqueada && !entrada.aceiteAdministrativo) return recusar(409, 'aceite');
+  const repetida = db.prepare('SELECT * FROM documento_versoes WHERE chave_idempotencia = ?').get(chave);
+  if (repetida) {
+    const igual = Number(repetida.id) === versaoId && repetida.hash_pdf === hashPdf && repetida.estado === 'emitida';
+    if (!igual) return recusar(409, 'chave');
+    return { status: 200, repetida: true, versao: publicoVersao(repetida) };
+  }
+  const atual = db.prepare('SELECT * FROM documento_versoes WHERE id = ?').get(versaoId);
+  if (!atual || atual.estado !== 'rascunho' || Number(atual.revisao) !== revisao) {
+    if (!atual) return recusar(404, 'versao');
+    if (atual.estado !== 'rascunho') return recusar(409, 'imutavel');
+    return recusar(409, 'revisao');
+  }
+  let revisaoEmissao = revisao;
+  if (entrada.conteudo) {
+    const textoConteudo = conteudoValido(entrada.conteudo);
+    if (!textoConteudo) return recusar(400, 'conteudo');
+    if (textoConteudo !== atual.conteudo_json) {
+      const gravou = db.prepare(`
+        UPDATE documento_versoes
+        SET conteudo_json = ?, hash_snapshot = ?, atualizada_em = ?, revisao = revisao + 1
+        WHERE id = ? AND revisao = ? AND estado = 'rascunho'
+      `).run(textoConteudo, hashTexto(textoConteudo), new Date().toISOString(), versaoId, revisao);
+      if (Number(gravou.changes) !== 1) return recusar(409, 'revisao');
+      revisaoEmissao = revisao + 1;
+    }
+  }
+  const relativo = atual.documento_id + '/' + atual.id + '.pdf';
+  const destino = arquivoPdf(relativo);
+  if (!destino) return recusar(400, 'caminho');
+  fs.mkdirSync(path.dirname(destino), { recursive: true });
+  gravado.caminho = destino;
+  fs.writeFileSync(destino, pdf, { flag: 'wx' });
+  const agora = new Date().toISOString();
+  const info = db.prepare(`
+    UPDATE documento_versoes
+    SET estado = 'emitida', hash_pdf = ?, pdf_caminho = ?, chave_idempotencia = ?,
+        emitida_em = ?, atualizada_em = ?, revisao = revisao + 1
+    WHERE id = ? AND revisao = ? AND estado = 'rascunho'
+  `).run(hashPdf, relativo, chave, agora, agora, versaoId, revisaoEmissao);
+  if (Number(info.changes) !== 1) throw new Error('emissao');
+  const row = db.prepare('SELECT * FROM documento_versoes WHERE id = ?').get(versaoId);
+  return { status: 201, repetida: false, versao: publicoVersao(row) };
+}
+
+function emitir(entrada) {
   const db = getDb();
   db.exec('BEGIN IMMEDIATE');
-  let gravado = null;
+  const gravado = { caminho: null };
   try {
-    const repetida = db.prepare('SELECT * FROM documento_versoes WHERE chave_idempotencia = ?').get(chave);
-    if (repetida) {
-      const igual = Number(repetida.id) === versaoId && repetida.hash_pdf === hashPdf && repetida.estado === 'emitida';
-      db.exec('COMMIT');
-      if (!igual) return recusar(409, 'chave');
-      return { status: 200, repetida: true, versao: publicoVersao(repetida) };
-    }
-    const atual = db.prepare('SELECT * FROM documento_versoes WHERE id = ?').get(versaoId);
-    if (!atual || atual.estado !== 'rascunho' || Number(atual.revisao) !== revisao) {
+    const resultado = emitirNaTransacao(db, entrada, gravado);
+    if (!resultado || resultado.status >= 400) {
       desfazer(db);
-      if (!atual) return recusar(404, 'versao');
-      if (atual.estado !== 'rascunho') return recusar(409, 'imutavel');
-      return recusar(409, 'revisao');
-    }
-    let revisaoEmissao = revisao;
-    if (entrada.conteudo) {
-      const textoConteudo = conteudoValido(entrada.conteudo);
-      if (!textoConteudo) {
-        desfazer(db);
-        return recusar(400, 'conteudo');
+      if (gravado.caminho) {
+        try { fs.rmSync(gravado.caminho, { force: true }); } catch (ignorar) { /* arquivo parcial */ }
       }
-      if (textoConteudo !== atual.conteudo_json) {
-        const gravou = db.prepare(`
-          UPDATE documento_versoes
-          SET conteudo_json = ?, hash_snapshot = ?, atualizada_em = ?, revisao = revisao + 1
-          WHERE id = ? AND revisao = ? AND estado = 'rascunho'
-        `).run(textoConteudo, hashTexto(textoConteudo), new Date().toISOString(), versaoId, revisao);
-        if (Number(gravou.changes) !== 1) {
-          desfazer(db);
-          return recusar(409, 'revisao');
-        }
-        revisaoEmissao = revisao + 1;
-      }
+      return resultado || recusar(500, 'pdf');
     }
-    const relativo = atual.documento_id + '/' + atual.id + '.pdf';
-    const destino = arquivoPdf(relativo);
-    if (!destino) {
-      desfazer(db);
-      return recusar(400, 'caminho');
-    }
-    fs.mkdirSync(path.dirname(destino), { recursive: true });
-    fs.writeFileSync(destino, pdf, { flag: 'wx' });
-    gravado = destino;
-    const agora = new Date().toISOString();
-    const info = db.prepare(`
-      UPDATE documento_versoes
-      SET estado = 'emitida', hash_pdf = ?, pdf_caminho = ?, chave_idempotencia = ?,
-          emitida_em = ?, atualizada_em = ?, revisao = revisao + 1
-      WHERE id = ? AND revisao = ? AND estado = 'rascunho'
-    `).run(hashPdf, relativo, chave, agora, agora, versaoId, revisaoEmissao);
-    if (Number(info.changes) !== 1) {
-      throw new Error('emissao');
-    }
-    const row = db.prepare('SELECT * FROM documento_versoes WHERE id = ?').get(versaoId);
     db.exec('COMMIT');
-    return { status: 201, repetida: false, versao: publicoVersao(row) };
+    return resultado;
   } catch (e) {
     desfazer(db);
-    if (gravado) {
-      try { fs.rmSync(gravado, { force: true }); } catch (ignorar) { /* arquivo parcial */ }
+    if (gravado.caminho) {
+      try { fs.rmSync(gravado.caminho, { force: true }); } catch (ignorar) { /* arquivo parcial */ }
     }
     if (e && /chave_idempotencia|UNIQUE/i.test(String(e.message || ''))) return recusar(409, 'chave');
     throw e;
@@ -527,14 +531,78 @@ function validarHash(versaoId) {
   return { status: 200, snapshot: snapshot, pdf: pdf };
 }
 
+function registrarRascunhoAberto(db, entrada) {
+  const motivo = motivoValido(entrada && entrada.motivo);
+  const texto = conteudoValido(entrada && entrada.conteudo);
+  const orcamentoId = Number(entrada && entrada.orcamentoId);
+  if (!motivo || !texto || !Number.isSafeInteger(orcamentoId) || orcamentoId <= 0) return null;
+  const usuario = usuarioAtivo(db, entrada.usuarioId);
+  if (!usuario) return null;
+  let documento = db.prepare(`
+    SELECT id FROM documentos WHERE tipo = 'contrato' AND orcamento_id = ?
+  `).get(orcamentoId);
+  const agora = new Date().toISOString();
+  if (!documento) {
+    const info = db.prepare(`
+      INSERT INTO documentos (tipo, orcamento_id, data_referencia, criado_em)
+      VALUES ('contrato', ?, NULL, ?)
+    `).run(orcamentoId, agora);
+    documento = { id: info.lastInsertRowid };
+  }
+  const documentoId = Number(documento.id);
+  const hash = hashTexto(texto);
+  const aberto = db.prepare(`
+    SELECT id, revisao FROM documento_versoes
+    WHERE documento_id = ? AND estado = 'rascunho'
+  `).get(documentoId);
+  if (aberto) {
+    if (entrada.naoSobrescrever) return { conflito: 'rascunho' };
+    db.prepare(`
+      UPDATE documento_versoes
+      SET motivo = ?, conteudo_json = ?, hash_snapshot = ?, atualizada_em = ?,
+          revisao = revisao + 1, usuario_id = ?, usuario_nome = ?
+      WHERE id = ? AND estado = 'rascunho'
+    `).run(motivo, texto, hash, agora, usuario.id, usuario.usuario, aberto.id);
+    return Number(aberto.id);
+  }
+  const anterior = db.prepare(`
+    SELECT id FROM documento_versoes
+    WHERE documento_id = ? AND estado = 'emitida'
+    ORDER BY numero DESC LIMIT 1
+  `).get(documentoId);
+  const ultimo = db.prepare(`
+    SELECT COALESCE(MAX(numero), 0) AS numero FROM documento_versoes WHERE documento_id = ?
+  `).get(documentoId);
+  const info = db.prepare(`
+    INSERT INTO documento_versoes (
+      documento_id, numero, estado, usuario_id, usuario_nome, criada_em, atualizada_em,
+      motivo, conteudo_json, hash_snapshot, versao_anterior_id, revisao
+    ) VALUES (?, ?, 'rascunho', ?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `).run(
+    documentoId,
+    Number(ultimo.numero) + 1,
+    usuario.id,
+    usuario.usuario,
+    agora,
+    agora,
+    motivo,
+    texto,
+    hash,
+    anterior ? anterior.id : null
+  );
+  return Number(info.lastInsertRowid);
+}
+
 module.exports = {
   canonico: canonico,
   criarDocumento: criarDocumento,
+  registrarRascunhoAberto: registrarRascunhoAberto,
   criarRascunho: criarRascunho,
   consultarRascunho: consultarRascunho,
   atualizarRascunho: atualizarRascunho,
   descartarRascunho: descartarRascunho,
   emitir: emitir,
+  emitirNaTransacao: emitirNaTransacao,
   historico: historico,
   consultarVersao: consultarVersao,
   comparar: comparar,

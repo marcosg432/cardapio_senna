@@ -304,6 +304,168 @@ function handleApi(req, res, pathname, apiDbReady) {
     });
   }
 
+  const decisaoRevisao = pathname.match(/^\/api\/orcamentos\/(\d+)\/revisao-contratual\/(\d+)\/(aceite|recusar|cancelar)\/?$/);
+  if (decisaoRevisao) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (req.method !== 'POST') return sendJson(res, 405, { erro: 'Método não permitido' });
+    if (!auth.exigirAdmin(req, res, { csrf: true })) return;
+    const sessao = auth.resolverSessao(req);
+    if (!sessao) return sendJson(res, 401, { erro: 'Sessão expirada.' });
+    const textosDecisao = {
+      pendente: 'Não há revisão pendente para esta decisão.',
+      desatualizada: 'O contrato mudou desde a solicitação. Reavalie a revisão antes de aprová-la.',
+      documento: 'Não foi possível concluir o documento desta revisão. O contrato vigente permanece.',
+      congelado: 'O valor financeiro deste contrato não está congelado.',
+      pdf: 'Não foi possível emitir o documento oficial. O contrato vigente permanece.',
+      valor: 'O valor proposto não confere com a revisão guardada. O contrato vigente permanece.',
+      motivo: 'Informe o motivo da recusa ou do cancelamento, com pelo menos 3 caracteres.',
+      confirmacao_revisao: 'Confirme a decisão antes de registrá-la.',
+      usuario: 'Usuário responsável não identificado.',
+      campos: 'A decisão recebida não é válida.'
+    };
+    return readJsonBody(req, (err, body) => {
+      if (err) return sendJson(res, 400, { erro: 'Não foi possível registrar a decisão da revisão.' });
+      const acao = decisaoRevisao[3];
+      if (acao !== 'aceite') {
+        try {
+          const resultado = orcamentosRepo.decidirRevisao(
+            decisaoRevisao[1],
+            decisaoRevisao[2],
+            sessao.usuario_id,
+            acao === 'recusar' ? 'recusado' : 'cancelado',
+            body
+          );
+          if (!resultado) return sendJson(res, 500, { erro: 'Não foi possível registrar a decisão da revisão.' });
+          if (resultado.status === 404) return sendJson(res, 404, { erro: 'Revisão não encontrada.' });
+          if (resultado.status !== 200) {
+            return sendJson(res, resultado.status, { erro: textosDecisao[resultado.motivo] || 'Não foi possível registrar a decisão da revisão.' });
+          }
+          return sendJson(res, 200, {
+            ok: true,
+            revisao_id: resultado.revisao_id,
+            aceite_cliente: resultado.aceite_cliente,
+            decidido_em: resultado.decidido_em,
+            decidido_usuario_nome: resultado.decidido_usuario_nome,
+            contrato_preservado: true,
+            nao_e_assinatura_da_cliente: true
+          });
+        } catch (e) {
+          return sendJson(res, 500, { erro: 'Não foi possível registrar a decisão da revisão. O contrato vigente permanece.' });
+        }
+      }
+      if (!body || body.confirmacao !== true) {
+        return sendJson(res, 400, { erro: textosDecisao.confirmacao_revisao });
+      }
+      let preparado;
+      try {
+        preparado = orcamentosRepo.prepararAceite(decisaoRevisao[1], decisaoRevisao[2]);
+      } catch (e) {
+        return sendJson(res, 500, { erro: 'Não foi possível preparar o aceite. O contrato vigente permanece.' });
+      }
+      if (!preparado || preparado.status === 404) return sendJson(res, 404, { erro: 'Revisão não encontrada.' });
+      if (!preparado || preparado.status !== 200) {
+        return sendJson(res, preparado.status, { erro: textosDecisao[preparado.motivo] || 'Não foi possível registrar o aceite administrativo.' });
+      }
+      let geracao;
+      try {
+        geracao = documentoPdf.gerar('contrato', preparado.conteudo, { rascunho: false });
+      } catch (e) {
+        return sendJson(res, 500, { erro: 'Não foi possível gerar o documento oficial. O contrato vigente permanece.' });
+      }
+      Promise.resolve(geracao).then((gerado) => {
+        try {
+          const resultado = orcamentosRepo.concluirAceite(
+            decisaoRevisao[1],
+            decisaoRevisao[2],
+            sessao.usuario_id,
+            gerado && gerado.buffer
+          );
+          if (!resultado || resultado.status === 404) return sendJson(res, 404, { erro: 'Revisão não encontrada.' });
+          if (!resultado || resultado.status !== 200) {
+            return sendJson(res, resultado.status, { erro: textosDecisao[resultado.motivo] || 'Não foi possível registrar o aceite administrativo. O contrato vigente permanece.' });
+          }
+          return sendJson(res, 200, {
+            ok: true,
+            revisao_id: resultado.revisao_id,
+            aceite_cliente: 'aceito',
+            aceite_administrativo: true,
+            nao_e_assinatura_da_cliente: true,
+            aceito_em: resultado.aceito_em,
+            aceito_usuario_nome: resultado.aceito_usuario_nome,
+            documento_aceito_id: resultado.documento_aceito_id,
+            valor_anterior_centavos: resultado.valor_anterior_centavos,
+            valor_novo_centavos: resultado.valor_novo_centavos,
+            recebido_centavos: resultado.recebido_centavos,
+            pendente_centavos: resultado.pendente_centavos,
+            retificacao_demonstrativo: resultado.retificacao_demonstrativo
+          });
+        } catch (e) {
+          return sendJson(res, 500, { erro: 'Não foi possível registrar o aceite administrativo. O contrato vigente permanece.' });
+        }
+      }).catch(() => {
+        sendJson(res, 500, { erro: 'Não foi possível gerar o documento oficial. O contrato vigente permanece.' });
+      });
+    });
+  }
+
+  const revisoes = pathname.match(/^\/api\/orcamentos\/(\d+)\/revisoes\/?$/);
+  if (revisoes) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { erro: 'Método não permitido' });
+    if (!auth.exigirAdmin(req, res, { csrf: false })) return;
+    const lista = orcamentosRepo.listarRevisoes(revisoes[1]);
+    if (lista.status === 404) return sendJson(res, 404, { erro: 'Orçamento não encontrado.' });
+    if (lista.status !== 200) return sendJson(res, lista.status, { erro: 'Não foi possível consultar as revisões.' });
+    return sendJson(res, 200, { revisoes: lista.revisoes });
+  }
+
+  const revisao = pathname.match(/^\/api\/orcamentos\/(\d+)\/revisao-contratual\/?$/);
+  if (revisao) {
+    if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });
+    if (req.method !== 'POST') return sendJson(res, 405, { erro: 'Método não permitido' });
+    if (!auth.exigirAdmin(req, res, { csrf: true })) return;
+    const sessao = auth.resolverSessao(req);
+    if (!sessao) return sendJson(res, 401, { erro: 'Sessão expirada.' });
+    return readJsonBody(req, (err, body) => {
+      if (err) return sendJson(res, 400, { erro: 'Não foi possível revisar o contrato.' });
+      try {
+        const resultado = orcamentosRepo.revisarContrato(revisao[1], body, sessao.usuario_id);
+        if (!resultado) return sendJson(res, 500, { erro: 'Não foi possível revisar o contrato.' });
+        if (resultado.status === 404) return sendJson(res, 404, { erro: 'Orçamento não encontrado.' });
+        if (resultado.status !== 200) {
+          const textos = {
+            editavel: 'O pedido ainda pode ser alterado antes da confirmação.',
+            motivo: 'Informe o motivo da revisão, com pelo menos 3 caracteres.',
+            confirmacao_revisao: 'Confirme a revisão antes de salvar.',
+            sem_mudanca: 'Nenhuma alteração contratual foi informada.',
+            documento: 'Não foi possível abrir a nova versão do contrato.',
+            rascunho: 'Já existe um rascunho de contrato aberto. Conclua ou descarte esse rascunho antes da revisão.',
+            pendente: 'Já existe uma revisão pendente para este contrato.',
+            campos: 'A revisão recebeu campos que não podem ser alterados por aqui.',
+            quantidade: resultado.mensagem || 'Quantidade inválida.',
+            usuario: 'Usuário responsável não identificado.'
+          };
+          return sendJson(res, resultado.status, { erro: textos[resultado.motivo] || 'Não foi possível revisar o contrato.' });
+        }
+        return sendJson(res, 200, {
+          ok: true,
+          revisao_id: resultado.revisao_id,
+          valor_anterior_centavos: resultado.valor_anterior_centavos,
+          valor_novo_centavos: resultado.valor_novo_centavos,
+          recebido_centavos: resultado.recebido_centavos,
+          pendente_centavos: resultado.pendente_centavos,
+          aceite_cliente: resultado.aceite_cliente,
+          documento_versao_id: resultado.documento_versao_id,
+          aplicado: false,
+          aceite_administrativo_pendente: true,
+          retificacao_demonstrativo: resultado.retificacao_demonstrativo
+        });
+      } catch (e) {
+        return sendJson(res, 500, { erro: 'Não foi possível revisar o contrato.' });
+      }
+    });
+  }
+
   const confirmar = pathname.match(/^\/api\/orcamentos\/(\d+)\/confirmar-contrato\/?$/);
   if (confirmar) {
     if (!apiDbReady) return sendJson(res, 503, { erro: 'Banco SQLite indisponível' });

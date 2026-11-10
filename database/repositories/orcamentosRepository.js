@@ -1,5 +1,9 @@
+const crypto = require('crypto');
+const fs = require('fs');
 const { getDb } = require('../db');
 const { valorContratadoCentavos } = require('../dinheiro');
+const documentosRepo = require('./documentosRepository');
+const propostaOficial = require('../../server/propostaOficial');
 
 const META_EDITADO_SO_LOCAL_PAYLOAD = '__editadoSomenteLocalEm';
 /** Iso do SQLite; apenas leitura no cliente para fundir lista — não persistir dentro do payload JSON armazenado */
@@ -114,6 +118,16 @@ const CAMPOS_NUMERO_CONTRATO = [
   'desconto_degustacao', 'valor_desconto', 'valor_original', 'total', 'valor_final',
   'entrada', 'restante'
 ];
+
+const CHAVES_REVISAO = CAMPOS_TEXTO_CONTRATO.concat(CAMPOS_NUMERO_CONTRATO, [
+  'itens', 'observacoes', 'observacoes_internas', 'email', 'telefone', 'status',
+  'degustacao_data', 'degustacao_hora', 'degustacao_obs',
+  'contrato_numero_exibicao', 'contato_nome', 'contato_celular',
+  'evento_cerimonialista', 'evento_cerimonialista_tel',
+  'evento_fotografo', 'evento_fotografo_tel',
+  'cliente_data_nascimento', 'cliente_cep', 'telefone_fixo',
+  'pagamento_valor_quitado_em'
+]);
 
 function itemContratual(item) {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return { invalido: true };
@@ -250,6 +264,7 @@ function atualizar(id, patch) {
     const now = new Date().toISOString();
     db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(merged), now, numero);
+    sincronizarReferenciaAntecipada(db, merged);
     db.exec('COMMIT');
   } catch (e) {
     try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
@@ -286,12 +301,25 @@ function substituir(obj) {
         payload = excluded.payload,
         updated_at = excluded.updated_at
     `).run(id, payload, created, now);
+    sincronizarReferenciaAntecipada(db, obj);
     db.exec('COMMIT');
   } catch (e) {
     try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
     throw e;
   }
   return buscarPorId(id);
+}
+
+function sincronizarReferenciaAntecipada(db, orcamento) {
+  const numero = Number(orcamento && orcamento.id);
+  if (!Number.isSafeInteger(numero) || numero <= 0) return;
+  const ficha = db.prepare('SELECT congelado FROM financeiro_contratos WHERE orcamento_id = ?').get(numero);
+  if (!ficha || Number(ficha.congelado) !== 0) return;
+  db.prepare(`
+    UPDATE financeiro_contratos
+    SET valor_contratado_centavos = ?
+    WHERE orcamento_id = ? AND congelado = 0
+  `).run(valorContratadoCentavos(orcamento), numero);
 }
 
 function confirmarContrato(id) {
@@ -324,10 +352,21 @@ function confirmarContrato(id) {
       stripMetadadosPayloadPersistencia(atual);
       db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ?')
         .run(JSON.stringify(atual), now, numero);
-      db.prepare(`
-        INSERT INTO financeiro_contratos (orcamento_id, valor_contratado_centavos, congelado_em)
-        VALUES (?, ?, ?)
-      `).run(numero, valorContratadoCentavos(atual), now);
+      const centavos = valorContratadoCentavos(atual);
+      const ficha = db.prepare('SELECT congelado FROM financeiro_contratos WHERE orcamento_id = ?').get(numero);
+      if (!ficha) {
+        db.prepare(`
+          INSERT INTO financeiro_contratos (
+            orcamento_id, valor_contratado_centavos, congelado_em, situacao, congelado
+          ) VALUES (?, ?, ?, 'confirmado', 1)
+        `).run(numero, centavos, now);
+      } else if (Number(ficha.congelado) !== 1) {
+        db.prepare(`
+          UPDATE financeiro_contratos
+          SET valor_contratado_centavos = ?, congelado_em = ?, situacao = 'confirmado', congelado = 1
+          WHERE orcamento_id = ? AND congelado = 0
+        `).run(centavos, now, numero);
+      }
       db.exec('COMMIT');
     }
   } catch (e) {
@@ -394,6 +433,387 @@ function atualizarOperacional(id, body) {
   return buscarPorId(numero);
 }
 
+function motivoRevisao(valor) {
+  if (typeof valor !== 'string') return null;
+  const texto = valor.replace(/\r\n/g, '\n').trim();
+  if (texto.length < 3 || texto.length > 500 || texto.indexOf('\0') !== -1) return null;
+  return texto;
+}
+
+function revisarContrato(id, body, usuarioId) {
+  const numero = Number(id);
+  const usuario = Number(usuarioId);
+  if (!Number.isSafeInteger(numero) || numero <= 0) return { status: 400, motivo: 'id' };
+  if (!Number.isSafeInteger(usuario) || usuario <= 0) return { status: 400, motivo: 'usuario' };
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { status: 400, motivo: 'campos' };
+  if (body.confirmacao !== true) return { status: 400, motivo: 'confirmacao_revisao' };
+  const motivo = motivoRevisao(body.motivo);
+  if (!motivo) return { status: 400, motivo: 'motivo' };
+  const patch = body.patch;
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return { status: 400, motivo: 'campos' };
+  const chaves = Object.keys(patch);
+  if (!chaves.length || chaves.some((chave) => CHAVES_REVISAO.indexOf(chave) === -1)) {
+    return { status: 400, motivo: 'campos' };
+  }
+  const db = getDb();
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const pessoa = db.prepare('SELECT id, usuario FROM admin_usuarios WHERE id = ? AND ativo = 1').get(usuario);
+    const row = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(numero);
+    if (!pessoa || !row) {
+      db.exec('ROLLBACK');
+      return pessoa ? { status: 404 } : { status: 400, motivo: 'usuario' };
+    }
+    const atual = JSON.parse(row.payload);
+    if (!confirmacaoValida(atual.gestao_contrato)) {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'editavel' };
+    }
+    const merged = Object.assign({}, atual, patch);
+    merged.id = numero;
+    aplicarConfirmacaoPreservada(atual, merged);
+    stripMetadadosPayloadPersistencia(merged);
+    const errQtd = validarQuantidadesItensOrcamento(merged);
+    if (errQtd) {
+      db.exec('ROLLBACK');
+      return { status: 400, motivo: 'quantidade', mensagem: errQtd };
+    }
+    const diferencas = { campos: [] };
+    const antes = blocoContratual(atual);
+    const depois = blocoContratual(merged);
+    Object.keys(depois).forEach((chave) => {
+      if (JSON.stringify(antes[chave]) !== JSON.stringify(depois[chave])) diferencas.campos.push(chave);
+    });
+    const valorAnterior = valorContratadoCentavos(atual);
+    const valorNovo = valorContratadoCentavos(merged);
+    if (!diferencas.campos.length && valorAnterior === valorNovo) {
+      db.exec('ROLLBACK');
+      return { status: 400, motivo: 'sem_mudanca' };
+    }
+    const anterior = JSON.parse(JSON.stringify(atual));
+    const proposto = JSON.parse(JSON.stringify(merged));
+    stripMetadadosPayloadPersistencia(anterior);
+    stripMetadadosPayloadPersistencia(proposto);
+    const payloadAnterior = documentosRepo.canonico(anterior);
+    const payloadProposto = documentosRepo.canonico(proposto);
+    const agora = new Date().toISOString();
+    const versao = documentosRepo.registrarRascunhoAberto(db, {
+      orcamentoId: numero,
+      usuarioId: pessoa.id,
+      motivo: motivo,
+      naoSobrescrever: true,
+      conteudo: {
+        proposta: propostaOficial.montar(proposto),
+        revisao_texto: motivo,
+        aceite_administrativo: 'pendente'
+      }
+    });
+    if (versao && versao.conflito) {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'rascunho' };
+    }
+    if (!versao) {
+      db.exec('ROLLBACK');
+      return { status: 400, motivo: 'documento' };
+    }
+    const info = db.prepare(`
+      INSERT INTO contrato_revisoes (
+        orcamento_id, payload_anterior_json, payload_proposto_json, hash_anterior,
+        valor_anterior_centavos, valor_novo_centavos, diferencas_json,
+        motivo, usuario_id, usuario_nome, criada_em, documento_versao_id, aceite_cliente
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
+    `).run(
+      numero,
+      payloadAnterior,
+      payloadProposto,
+      crypto.createHash('sha256').update(payloadAnterior).digest('hex'),
+      valorAnterior,
+      valorNovo,
+      JSON.stringify(diferencas),
+      motivo,
+      pessoa.id,
+      pessoa.usuario,
+      agora,
+      Number(versao)
+    );
+    const recebido = db.prepare(`
+      SELECT COALESCE(SUM(valor_centavos), 0) AS total FROM pagamentos WHERE orcamento_id = ?
+    `).get(numero);
+    db.exec('COMMIT');
+    return {
+      status: 200,
+      revisao_id: Number(info.lastInsertRowid),
+      valor_anterior_centavos: valorAnterior,
+      valor_novo_centavos: valorNovo,
+      recebido_centavos: Number(recebido.total) || 0,
+      pendente_centavos: valorAnterior - (Number(recebido.total) || 0),
+      aceite_cliente: 'pendente',
+      documento_versao_id: Number(versao),
+      aplicado: false,
+      retificacao_demonstrativo: false
+    };
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    if (e && /idx_contrato_revisao_pendente|UNIQUE/i.test(String(e.message || ''))) {
+      return { status: 409, motivo: 'pendente' };
+    }
+    throw e;
+  }
+}
+
+function limparArquivo(gravado) {
+  if (!gravado || !gravado.caminho) return;
+  try { fs.rmSync(gravado.caminho, { force: true }); } catch (ignorar) { /* arquivo parcial */ }
+  gravado.caminho = null;
+}
+
+function carregarRevisao(db, orcamentoId, revisaoId) {
+  return db.prepare(`
+    SELECT * FROM contrato_revisoes WHERE id = ? AND orcamento_id = ?
+  `).get(revisaoId, orcamentoId);
+}
+
+function payloadAtualCanonico(row) {
+  const atual = JSON.parse(row.payload);
+  stripMetadadosPayloadPersistencia(atual);
+  return documentosRepo.canonico(atual);
+}
+
+function prepararAceite(id, revisaoId) {
+  const numero = Number(id);
+  const revisaoNumero = Number(revisaoId);
+  if (!Number.isSafeInteger(numero) || numero <= 0) return { status: 400, motivo: 'id' };
+  if (!Number.isSafeInteger(revisaoNumero) || revisaoNumero <= 0) return { status: 400, motivo: 'id' };
+  const revisao = carregarRevisao(getDb(), numero, revisaoNumero);
+  if (!revisao) return { status: 404 };
+  if (revisao.aceite_cliente !== 'pendente') return { status: 409, motivo: 'pendente' };
+  const row = getDb().prepare('SELECT payload FROM orcamentos WHERE id = ?').get(numero);
+  if (!row || payloadAtualCanonico(row) !== revisao.payload_anterior_json) {
+    return { status: 409, motivo: 'desatualizada' };
+  }
+  return {
+    status: 200,
+    conteudo: {
+      proposta: propostaOficial.montar(JSON.parse(revisao.payload_proposto_json)),
+      revisao_texto: revisao.motivo
+    }
+  };
+}
+
+function concluirAceite(id, revisaoId, usuarioId, pdf) {
+  const numero = Number(id);
+  const revisaoNumero = Number(revisaoId);
+  const usuario = Number(usuarioId);
+  if (!Number.isSafeInteger(numero) || numero <= 0) return { status: 400, motivo: 'id' };
+  if (!Number.isSafeInteger(revisaoNumero) || revisaoNumero <= 0) return { status: 400, motivo: 'id' };
+  if (!Number.isSafeInteger(usuario) || usuario <= 0) return { status: 400, motivo: 'usuario' };
+  if (!Buffer.isBuffer(pdf) || pdf.length < 1) return { status: 400, motivo: 'pdf' };
+  const db = getDb();
+  const gravado = { caminho: null };
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const pessoa = db.prepare('SELECT id, usuario FROM admin_usuarios WHERE id = ? AND ativo = 1').get(usuario);
+    const revisao = carregarRevisao(db, numero, revisaoNumero);
+    const row = db.prepare('SELECT payload, updated_at FROM orcamentos WHERE id = ?').get(numero);
+    if (!pessoa || !revisao || !row) {
+      db.exec('ROLLBACK');
+      return pessoa ? { status: 404 } : { status: 400, motivo: 'usuario' };
+    }
+    if (revisao.aceite_cliente !== 'pendente') {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'pendente' };
+    }
+    if (payloadAtualCanonico(row) !== revisao.payload_anterior_json) {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'desatualizada' };
+    }
+    const atual = JSON.parse(row.payload);
+    const proposto = JSON.parse(revisao.payload_proposto_json);
+    aplicarConfirmacaoPreservada(atual, proposto);
+    proposto.id = numero;
+    stripMetadadosPayloadPersistencia(proposto);
+    const valorNovo = valorContratadoCentavos(proposto);
+    if (valorNovo !== Number(revisao.valor_novo_centavos)) {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'valor' };
+    }
+    const ficha = db.prepare(`
+      SELECT congelado, situacao FROM financeiro_contratos WHERE orcamento_id = ?
+    `).get(numero);
+    if (!ficha || Number(ficha.congelado) !== 1 || ficha.situacao !== 'confirmado') {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'congelado' };
+    }
+    const versao = db.prepare('SELECT id, revisao, estado FROM documento_versoes WHERE id = ?').get(revisao.documento_versao_id);
+    if (!versao || versao.estado !== 'rascunho') {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'documento' };
+    }
+    const agora = new Date().toISOString();
+    const gravou = db.prepare('UPDATE orcamentos SET payload = ?, updated_at = ? WHERE id = ? AND updated_at = ?')
+      .run(JSON.stringify(proposto), agora, numero, row.updated_at);
+    if (Number(gravou.changes) !== 1) {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'desatualizada' };
+    }
+    const financeiro = db.prepare(`
+      UPDATE financeiro_contratos
+      SET valor_contratado_centavos = ?
+      WHERE orcamento_id = ? AND situacao = 'confirmado' AND congelado = 1
+    `).run(valorNovo, numero);
+    if (Number(financeiro.changes) !== 1) {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'congelado' };
+    }
+    const emissao = documentosRepo.emitirNaTransacao(db, {
+      versaoId: Number(versao.id),
+      revisao: Number(versao.revisao),
+      chave: 'aceite-administrativo-' + numero + '-' + revisaoNumero,
+      pdf: pdf,
+      conteudo: {
+        proposta: propostaOficial.montar(proposto),
+        revisao_texto: revisao.motivo
+      },
+      aceiteAdministrativo: true
+    }, gravado);
+    if (!emissao || emissao.status !== 201) {
+      db.exec('ROLLBACK');
+      limparArquivo(gravado);
+      return emissao || { status: 500, motivo: 'pdf' };
+    }
+    const aceito = db.prepare(`
+      UPDATE contrato_revisoes
+      SET aceite_cliente = 'aceito', aceito_em = ?, aceito_usuario_id = ?,
+          aceito_usuario_nome = ?, documento_aceito_id = ?
+      WHERE id = ? AND orcamento_id = ? AND aceite_cliente = 'pendente'
+    `).run(agora, pessoa.id, pessoa.usuario, Number(versao.id), revisaoNumero, numero);
+    if (Number(aceito.changes) !== 1) throw new Error('aceite');
+    const recebido = db.prepare(`
+      SELECT COALESCE(SUM(valor_centavos), 0) AS total FROM pagamentos WHERE orcamento_id = ?
+    `).get(numero);
+    const retificacao = !!db.prepare(`
+      SELECT 1 AS ok
+      FROM documento_versoes v
+      JOIN documentos d ON d.id = v.documento_id
+      WHERE d.orcamento_id = ? AND d.tipo = 'demonstrativo' AND v.estado = 'emitida'
+      LIMIT 1
+    `).get(numero);
+    db.exec('COMMIT');
+    return {
+      status: 200,
+      revisao_id: revisaoNumero,
+      valor_anterior_centavos: Number(revisao.valor_anterior_centavos),
+      valor_novo_centavos: valorNovo,
+      recebido_centavos: Number(recebido.total) || 0,
+      pendente_centavos: valorNovo - (Number(recebido.total) || 0),
+      aceite_cliente: 'aceito',
+      aceite_administrativo: true,
+      nao_e_assinatura_da_cliente: true,
+      aceito_em: agora,
+      aceito_usuario_nome: pessoa.usuario,
+      documento_aceito_id: Number(versao.id),
+      retificacao_demonstrativo: retificacao
+    };
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    limparArquivo(gravado);
+    throw e;
+  }
+}
+
+function decidirRevisao(id, revisaoId, usuarioId, acao, body) {
+  const numero = Number(id);
+  const revisaoNumero = Number(revisaoId);
+  const usuario = Number(usuarioId);
+  if (acao !== 'recusado' && acao !== 'cancelado') return { status: 400, motivo: 'campos' };
+  if (!Number.isSafeInteger(numero) || numero <= 0) return { status: 400, motivo: 'id' };
+  if (!Number.isSafeInteger(revisaoNumero) || revisaoNumero <= 0) return { status: 400, motivo: 'id' };
+  if (!Number.isSafeInteger(usuario) || usuario <= 0) return { status: 400, motivo: 'usuario' };
+  if (!body || body.confirmacao !== true) return { status: 400, motivo: 'confirmacao_revisao' };
+  const motivo = motivoRevisao(body.motivo);
+  if (!motivo) return { status: 400, motivo: 'motivo' };
+  const db = getDb();
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const pessoa = db.prepare('SELECT id, usuario FROM admin_usuarios WHERE id = ? AND ativo = 1').get(usuario);
+    const revisao = carregarRevisao(db, numero, revisaoNumero);
+    const antes = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(numero);
+    if (!pessoa || !revisao || !antes) {
+      db.exec('ROLLBACK');
+      return pessoa ? { status: 404 } : { status: 400, motivo: 'usuario' };
+    }
+    if (revisao.aceite_cliente !== 'pendente') {
+      db.exec('ROLLBACK');
+      return { status: 409, motivo: 'pendente' };
+    }
+    const agora = new Date().toISOString();
+    if (revisao.documento_versao_id != null) {
+      const descarte = db.prepare(`
+        UPDATE documento_versoes
+        SET estado = 'descartado', motivo = ?, atualizada_em = ?, revisao = revisao + 1
+        WHERE id = ? AND estado = 'rascunho'
+      `).run(motivo, agora, revisao.documento_versao_id);
+      if (Number(descarte.changes) !== 1) {
+        db.exec('ROLLBACK');
+        return { status: 409, motivo: 'documento' };
+      }
+    }
+    const info = db.prepare(`
+      UPDATE contrato_revisoes
+      SET aceite_cliente = ?, decidido_em = ?, decidido_usuario_id = ?,
+          decidido_usuario_nome = ?, motivo_decisao = ?
+      WHERE id = ? AND orcamento_id = ? AND aceite_cliente = 'pendente'
+    `).run(acao, agora, pessoa.id, pessoa.usuario, motivo, revisaoNumero, numero);
+    if (Number(info.changes) !== 1) throw new Error('decisao');
+    const depois = db.prepare('SELECT payload FROM orcamentos WHERE id = ?').get(numero);
+    if (depois.payload !== antes.payload) throw new Error('contrato alterado');
+    db.exec('COMMIT');
+    return {
+      status: 200,
+      revisao_id: revisaoNumero,
+      aceite_cliente: acao,
+      decidido_em: agora,
+      decidido_usuario_nome: pessoa.usuario,
+      contrato_preservado: true
+    };
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (ignorar) { /* a transação já pode ter sido desfeita */ }
+    throw e;
+  }
+}
+
+function listarRevisoes(id) {
+  const numero = Number(id);
+  if (!Number.isSafeInteger(numero) || numero <= 0) return { status: 400, motivo: 'id' };
+  const db = getDb();
+  const existe = db.prepare('SELECT id FROM orcamentos WHERE id = ?').get(numero);
+  if (!existe) return { status: 404 };
+  const revisoes = db.prepare(`
+    SELECT id, valor_anterior_centavos, valor_novo_centavos, motivo, usuario_nome,
+           criada_em, documento_versao_id, aceite_cliente, aceito_em, aceito_usuario_nome,
+           documento_aceito_id, decidido_em, decidido_usuario_nome, motivo_decisao
+    FROM contrato_revisoes
+    WHERE orcamento_id = ?
+    ORDER BY id DESC
+  `).all(numero).map((row) => ({
+    id: Number(row.id),
+    valor_anterior_centavos: Number(row.valor_anterior_centavos),
+    valor_novo_centavos: Number(row.valor_novo_centavos),
+    motivo: row.motivo,
+    usuario_nome: row.usuario_nome,
+    criada_em: row.criada_em,
+    documento_versao_id: row.documento_versao_id == null ? null : Number(row.documento_versao_id),
+    aceite_cliente: row.aceite_cliente,
+    aceito_em: row.aceito_em || null,
+    aceito_usuario_nome: row.aceito_usuario_nome || null,
+    documento_aceito_id: row.documento_aceito_id == null ? null : Number(row.documento_aceito_id),
+    decidido_em: row.decidido_em || null,
+    decidido_usuario_nome: row.decidido_usuario_nome || null,
+    motivo_decisao: row.motivo_decisao || null
+  }));
+  return { status: 200, revisoes: revisoes };
+}
+
 function deletar(id) {
   const db = getDb();
   const r = db.prepare('DELETE FROM orcamentos WHERE id = ?').run(Number(id));
@@ -408,5 +828,10 @@ module.exports = {
   substituir,
   deletar,
   confirmarContrato,
+  revisarContrato,
+  prepararAceite,
+  concluirAceite,
+  decidirRevisao,
+  listarRevisoes,
   atualizarOperacional
 };
