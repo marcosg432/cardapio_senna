@@ -1,6 +1,8 @@
 /**
  * Soma de doces do pedido. Não altera preço nem valor.
- * Unidade ausente não vale 1. Cento vale 100 unidades.
+ * Docinho sem unidade usa a quantidade gravada. Cento vale 100.
+ * Bolo, torta inteira, cheesecake inteiro, sobremesa, kit, pacote e
+ * caixinha com várias peças ficam pendentes, salvo quando a unidade já é cento.
  */
 function rotuloDoce(valor) {
     return String(valor == null ? "" : valor).replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR");
@@ -30,6 +32,20 @@ function lerQuantidadeDoce(valor) {
     return null;
 }
 
+function produtoSemEquivalencia(nome) {
+    var texto = rotuloDoce(nome);
+    if (/\bbolos?\b/.test(texto)) return true;
+    if (/\bkits?\b/.test(texto)) return true;
+    if (/\bpacotes?\b/.test(texto)) return true;
+    if (/\bcaixinhas?\s+\d+/.test(texto) || /\bcaixas?\s+(?:com\s+)?\d+/.test(texto)) return true;
+    if (/\btravessas?\b/.test(texto) || /\bsobremesas?\b/.test(texto)) return true;
+    if (/\bcheesecakes?\b/.test(texto) && !/\bminis?\b/.test(texto) && !/\bflor(?:es)?\b/.test(texto)) return true;
+    if (/\bminitort/.test(texto) || /\btortinhas?\b/.test(texto)) return false;
+    if (/\bminis?\b/.test(texto) && /\btortas?\b/.test(texto)) return false;
+    if (/\btortas?\b/.test(texto)) return true;
+    return false;
+}
+
 function fatorUnidadeDoce(unidade) {
     var texto = rotuloDoce(unidade).replace(/\.$/, "");
     if (!texto || texto === "unidade não informada" || texto === "—" || texto === "-" || texto === "nao informada") {
@@ -53,14 +69,15 @@ function totalDocesPedido(itens) {
             return;
         }
         var fator = fatorUnidadeDoce(item.unidade);
-        if (fator == null) {
-            pendencias.push({ nome: nome, motivo: "sem unidade" });
+        if (fator !== 100 && produtoSemEquivalencia(nome)) {
+            pendencias.push({ nome: nome, motivo: "Sem equivalência em docinhos." });
             return;
         }
         if (fator === undefined) {
             pendencias.push({ nome: nome, motivo: "Unidade incompatível com a soma de doces." });
             return;
         }
+        if (fator === null) fator = 1;
         var pecas = quantidade * fator;
         var inteiro = Math.round(pecas);
         if (Math.abs(pecas - inteiro) > 0.001 || !isFinite(inteiro) || inteiro <= 0) {
@@ -69,10 +86,12 @@ function totalDocesPedido(itens) {
         }
         total += inteiro;
     });
+    var parcial = pendencias.length > 0;
     return {
         total: total,
-        texto: "Quantidade total de doces: " + total,
-        pendencias: pendencias
+        texto: "Quantidade total de doces: " + total + (parcial ? " (parcial)" : ""),
+        pendencias: pendencias,
+        parcial: parcial
     };
 }
 

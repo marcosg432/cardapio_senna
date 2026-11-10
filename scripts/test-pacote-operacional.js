@@ -161,7 +161,11 @@ async function main() {
     { nome: "Bolo de corte", quantidade: 1 },
     { nome: "Doce em caixa", quantidade: 3, unidade: "kg" }
   ]);
-  assert(soma.total === 240 && soma.pendencias.length === 2, "soma de doces " + JSON.stringify(soma));
+  assert(soma.total === 240 && soma.parcial === true, "soma de doces " + JSON.stringify(soma));
+  var bolo = soma.pendencias.find(function (item) { return item.nome === "Bolo de corte"; });
+  var quilo = soma.pendencias.find(function (item) { return item.nome === "Doce em caixa"; });
+  assert(bolo && bolo.motivo.indexOf("equivalência") !== -1, "bolo pendente " + JSON.stringify(soma.pendencias));
+  assert(quilo && quilo.motivo.indexOf("incompatível") !== -1, "quilo pendente");
 
   fs.rmSync(tmpDb, { force: true });
   await subir();

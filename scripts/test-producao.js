@@ -322,6 +322,7 @@ async function main() {
   const ficha = await pdf("/api/producao/eventos/950001/pdf?quantidade=1", "ficha.pdf");
   assert(ficha.indexOf("Candy Li Doces Finos") !== -1 && ficha.indexOf("Ordem de Serviço") !== -1, "cabeçalho");
   assert(ficha.indexOf("Contrato 950001") !== -1 && ficha.indexOf("Casamento") !== -1, "evento pdf");
+  assert(ficha.indexOf("950004") === -1 && ficha.indexOf("Cliente Mesmo Dia") === -1, "ficha só deste contrato");
   assert(ficha.indexOf("cento") !== -1 && ficha.indexOf("pacote") !== -1 && ficha.indexOf("Unidade não informada") === -1, "unidades pdf");
   assert(ficha.indexOf("Confer") !== -1 && ficha.indexOf("18:30") !== -1 && ficha.indexOf("14") !== -1, "conferência pdf");
   assert(ficha.indexOf("Produzido") !== -1 && ficha.indexOf("Conferido por") !== -1, "conferência manual");
@@ -398,7 +399,7 @@ async function main() {
     botao.click();
     return true;
   })()`);
-  await avaliar("document.getElementById('producao-detalhe').hidden === false && document.getElementById('producao-detalhe').innerText.indexOf('cento') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Há produtos sem unidade') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Unidade não informada') === -1");
+  await avaliar("document.getElementById('producao-detalhe').hidden === false && document.getElementById('producao-detalhe-os').textContent === 'Gerar Ordem de Serviço' && [...document.querySelectorAll('#producao-corpo button')].some((el) => el.textContent === 'Gerar Ordem de Serviço') && document.getElementById('producao-detalhe').innerText.indexOf('cento') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Há produtos sem unidade') !== -1 && document.getElementById('producao-detalhe').innerText.indexOf('Unidade não informada') === -1");
   await avaliar("document.body.innerText.indexOf('120') !== -1 && document.body.innerText.indexOf('telefone secreto') === -1 && document.body.innerText.indexOf('R$') === -1");
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/index.html" });
   await avaliar("document.getElementById('indicador-orcamentos').textContent === '5'");

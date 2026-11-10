@@ -1249,7 +1249,20 @@
             xhr.responseType = "blob";
             xhr.onload = function () {
                 if (xhr.status !== 200) {
-                    alert(aviso || "O servidor não gerou o PDF.");
+                    var leitor = new FileReader();
+                    leitor.onload = function () {
+                        var texto = aviso || "O servidor não gerou o PDF.";
+                        try {
+                            var dados = JSON.parse(String(leitor.result || ""));
+                            if (dados && dados.erro) texto = dados.erro;
+                        } catch (e) { /* a resposta não era JSON */ }
+                        alert(texto);
+                    };
+                    leitor.onerror = function () {
+                        alert(aviso || "O servidor não gerou o PDF.");
+                    };
+                    if (xhr.response) leitor.readAsText(xhr.response);
+                    else alert(aviso || "O servidor não gerou o PDF.");
                     return;
                 }
                 var url = URL.createObjectURL(xhr.response);
@@ -1272,7 +1285,7 @@
             btnOrdem.addEventListener("click", function () {
                 if (!orcamentoAtual) return;
                 if (!contratoEstaConfirmado(orcamentoAtual)) {
-                    alert("A ordem de serviço definitiva fica disponível depois da confirmação do contrato. Este pedido continua em negociação, e abrir o documento não confirma o contrato.");
+                    alert("É necessário confirmar o contrato antes de gerar a ordem de serviço. Este pedido continua em negociação, e abrir o documento não confirma o contrato.");
                     return;
                 }
                 baixarPdfDoServidor(

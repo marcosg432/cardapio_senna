@@ -176,6 +176,7 @@ function montarEvento(orcamento) {
     numero_contrato: textoLimpo(orcamento && orcamento.contrato_numero_exibicao) || String(orcamento && orcamento.id || ''),
     doces_total: somaDoces.total,
     doces_texto: somaDoces.texto,
+    doces_parcial: somaDoces.parcial === true,
     doces_aviso: somaDoces.pendencias.length
       ? 'Itens fora da soma: ' + somaDoces.pendencias.map(function (item) {
         return item.nome + ' (' + item.motivo + ')';
@@ -215,6 +216,7 @@ function resumo(evento) {
     convidados: evento.convidados,
     produtos: evento.produtos,
     doces_total: evento.doces_total,
+    doces_parcial: evento.doces_parcial === true,
     doces_pendencias: evento.doces_pendencias,
     conferencia: evento.conferencia,
     situacao: evento.situacao
@@ -269,6 +271,10 @@ function somarDoces(eventos) {
   }, 0);
 }
 
+function docesParcial(eventos) {
+  return eventos.some(function (evento) { return evento.doces_parcial === true || evento.doces_pendencias > 0; });
+}
+
 function montarDia(eventos, iso) {
   const doDia = eventos.filter(function (evento) { return evento.data_evento === iso; });
   return {
@@ -277,6 +283,7 @@ function montarDia(eventos, iso) {
     eventos: doDia,
     totais: agrupar(doDia),
     doces_total: somarDoces(doDia),
+    doces_parcial: docesParcial(doDia),
     origem: 'itens_atuais'
   };
 }
@@ -295,6 +302,7 @@ function montarPeriodo(eventos, inicio, fim, visao) {
     eventos: selecionados,
     totais: agrupar(selecionados),
     doces_total: somarDoces(selecionados),
+    doces_parcial: docesParcial(selecionados),
     origem: 'itens_atuais'
   };
 }

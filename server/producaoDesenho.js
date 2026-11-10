@@ -366,7 +366,7 @@
             }
             if (typeof dia.doces_total === 'number') {
                 ctx.garantir(8);
-                ctx.texto('Quantidade total de doces: ' + dia.doces_total, ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
+                ctx.texto('Quantidade total de doces: ' + dia.doces_total + (dia.doces_parcial ? ' (parcial)' : ''), ctx.margem, ctx.posicao(), 11, 'bold', ctx.cores.navy);
                 ctx.avancar(6);
             }
             ctx.garantir(8);
@@ -388,7 +388,7 @@
                     ctx.avancar(5);
                 }
                 if (typeof evento.doces_total === 'number') {
-                    ctx.texto('Quantidade total de doces: ' + evento.doces_total, ctx.margem, ctx.posicao(), 9, 'bold', ctx.cores.navy);
+                    ctx.texto('Quantidade total de doces: ' + evento.doces_total + (evento.doces_parcial || evento.doces_pendencias ? ' (parcial)' : ''), ctx.margem, ctx.posicao(), 9, 'bold', ctx.cores.navy);
                     ctx.avancar(5);
                 }
                 ctx.texto(evento.tipo_evento || 'Evento a conferir', ctx.margem, ctx.posicao(), 10, 'normal', ctx.cores.tinta);

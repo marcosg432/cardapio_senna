@@ -24,7 +24,7 @@ function sendPdf(res, arquivo, buffer) {
 function mensagem(motivo) {
   if (motivo === 'id') return 'Identificador inválido.';
   if (motivo === 'data') return 'Data inválida.';
-  if (motivo === 'confirmacao') return 'Contrato não confirmado.';
+  if (motivo === 'confirmacao') return 'É necessário confirmar o contrato antes de gerar a ordem de serviço.';
   return 'Não foi possível consultar a produção.';
 }
 

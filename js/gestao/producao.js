@@ -58,7 +58,9 @@
             if (botao) botao.disabled = false;
             var tipo = xhr.getResponseHeader("Content-Type") || "";
             if (xhr.status !== 200 || tipo.indexOf("application/pdf") !== 0 || !xhr.response) {
-                mostrarMensagem("Não foi possível gerar o PDF de consulta.", true);
+                lerErroPdf(xhr.response, function (texto) {
+                    mostrarMensagem(texto || "Não foi possível gerar o PDF de consulta.", true);
+                });
                 return;
             }
             var cabecalho = xhr.getResponseHeader("Content-Disposition") || "";
@@ -80,6 +82,26 @@
         xhr.send();
     }
 
+    function lerErroPdf(blob, callback) {
+        if (!blob) {
+            callback("");
+            return;
+        }
+        var leitor = new FileReader();
+        leitor.onload = function () {
+            var texto = "";
+            try {
+                var dados = JSON.parse(String(leitor.result || ""));
+                texto = dados && dados.erro ? dados.erro : "";
+            } catch (e) {
+                texto = "";
+            }
+            callback(texto);
+        };
+        leitor.onerror = function () { callback(""); };
+        leitor.readAsText(blob);
+    }
+
     function desenharLista(dados) {
         var eventos = dados && dados.eventos || [];
         if (!eventos.length) {
@@ -95,7 +117,7 @@
             var nome = evento.casal || evento.nome_cliente || "—";
             var numero = evento.numero_contrato || evento.id;
             var doces = evento.doces_total == null ? "—" : evento.doces_total;
-            if (evento.doces_pendencias) doces += " · conferir";
+            if (evento.doces_parcial || evento.doces_pendencias) doces += " · parcial";
             return (
                 "<tr>" +
                 "<td>" + escapar(dataTexto(evento.data_evento)) + "</td>" +
@@ -105,7 +127,7 @@
                 "<td>" + escapar(evento.situacao) + "</td>" +
                 "<td><div class=\"producao-acoes\">" +
                 "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"ver\" data-id=\"" + escapar(evento.id) + "\">Ver produção</button>" +
-                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar ficha para consulta</button>" +
+                "<button type=\"button\" class=\"gestao-confirmar\" data-acao=\"pdf\" data-id=\"" + escapar(evento.id) + "\">Gerar Ordem de Serviço</button>" +
                 "</div></td></tr>"
             );
         }).join("");
@@ -130,7 +152,9 @@
             return item.valido !== false && !item.unidade;
         }).length;
         var notas = (evento.avisos || []).slice();
-        if (semUnidade) notas.push("Há produtos sem unidade. A quantidade de cada um continua na lista.");
+        if (evento.doces_texto) notas.unshift(evento.doces_texto);
+        if (evento.doces_aviso) notas.push(evento.doces_aviso);
+        if (semUnidade) notas.push("Há produtos sem unidade. A quantidade gravada entra na soma como unidades.");
         avisos.innerHTML = notas.map(function (aviso) {
             return "<p class=\"producao-aviso\">" + escapar(aviso) + "</p>";
         }).join("");
@@ -143,6 +167,10 @@
                 "<td>" + (item.complementar ? "Sim" : "—") + "</td></tr>"
             );
         }).join("") : "<tr><td colspan=\"4\">Nenhum produto contratado.</td></tr>";
+        var botaoOs = document.getElementById("producao-detalhe-os");
+        if (botaoOs) botaoOs.setAttribute("data-id", evento.id);
+        var linhaDoces = document.getElementById("producao-detalhe-doces");
+        if (linhaDoces) linhaDoces.textContent = evento.doces_texto || "";
         detalhe.hidden = false;
         detalhe.scrollIntoView({ block: "nearest" });
     }
@@ -153,14 +181,20 @@
         var eventos = document.getElementById("producao-dia-eventos");
         var totais = dia && dia.totais || [];
         var lista = dia && dia.eventos || [];
+        var linhaDoces = document.getElementById("producao-dia-doces");
         if (!lista.length) {
             vazio.hidden = false;
             vazio.textContent = "Nenhum evento confirmado nesta data.";
             grade.hidden = true;
             eventos.innerHTML = "";
+            if (linhaDoces) linhaDoces.textContent = "";
             return;
         }
         vazio.hidden = true;
+        if (linhaDoces) {
+            linhaDoces.textContent = "Quantidade total de doces: " + (dia.doces_total == null ? 0 : dia.doces_total) +
+                (dia.doces_parcial ? " (parcial)" : "");
+        }
         grade.hidden = false;
         document.getElementById("producao-dia-corpo").innerHTML = totais.map(function (item) {
             return (
@@ -248,11 +282,13 @@
             var marca = evento.planejamento ? " · planejamento, ainda não confirmado" : "";
             return "<li>" + escapar(dataTexto(evento.data_evento)) + " · " + escapar(nome) +
                 " · Contrato " + escapar(evento.numero_contrato || evento.id) + marca +
-                " · " + escapar(evento.doces_total == null ? "—" : evento.doces_total) + " doces</li>";
+                " · " + escapar(evento.doces_total == null ? "—" : evento.doces_total) + " doces" +
+                (evento.doces_parcial || evento.doces_pendencias ? " (parcial)" : "") + "</li>";
         }).join("");
         caixa.innerHTML = "<p class=\"gestao-nota\">" + escapar(periodo.rotulo || "Produção do período") +
             " · " + escapar(periodo.data_texto || "") +
-            "<br>Quantidade total de doces: " + escapar(periodo.doces_total) + "</p>" +
+            "<br>Quantidade total de doces: " + escapar(periodo.doces_total) +
+            (periodo.doces_parcial ? " (parcial)" : "") + "</p>" +
             "<ul>" + linhas + "</ul><ul>" + eventosHtml + "</ul>";
     }
 
@@ -278,6 +314,11 @@
         document.getElementById("producao-periodo-de").value = isoDe(inicio);
         document.getElementById("producao-periodo-ate").value = isoDe(fim);
         carregarPeriodo();
+    });
+    document.getElementById("producao-detalhe-os").addEventListener("click", function () {
+        var id = this.getAttribute("data-id");
+        if (!id) return;
+        baixar("/api/producao/eventos/" + encodeURIComponent(id) + "/pdf", this);
     });
     document.getElementById("producao-periodo-ver").addEventListener("click", carregarPeriodo);
     document.getElementById("producao-periodo-pdf").addEventListener("click", function () {
