@@ -692,12 +692,19 @@
 #financeiro-sem-congelamento[hidden],
 #financeiro-mensagem[hidden],
 #financeiro-estado[hidden],
-#financeiro-demonstrativo[hidden] {
+#financeiro-demonstrativo[hidden],
+#financeiro-provisorio[hidden] {
     display: none !important;
 }
 
 .gestao-demonstrativo-acoes {
     margin-top: 1rem;
+}
+
+.gestao-demonstrativo-acoes .gestao-confirmar {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
 }
 
 .gestao-mensagem {

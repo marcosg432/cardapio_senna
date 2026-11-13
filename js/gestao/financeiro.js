@@ -131,6 +131,12 @@
         return !!contrato.congelado;
     }
 
+    function podeDemonstrativo(contrato) {
+        if (!contrato || !contrato.id) return false;
+        if (contrato.congelado) return true;
+        return contrato.situacao === "antecipado" && contrato.valor_contratado_centavos != null;
+    }
+
     function textoValor(contrato) {
         if (contrato.valor_atual_centavos == null && contrato.valor_contratado_centavos == null) return "Não congelado";
         return formatarCentavos(contrato.valor_atual_centavos != null ? contrato.valor_atual_centavos : contrato.valor_contratado_centavos);
@@ -350,7 +356,9 @@
         formulario.hidden = !podeLancar(contrato);
         var retificacao = document.getElementById("financeiro-retificacao");
         if (retificacao) retificacao.hidden = !contrato.retificacao_demonstrativo;
-        if (botaoPdf) botaoPdf.hidden = !contrato.congelado;
+        var avisoProvisorio = document.getElementById("financeiro-provisorio");
+        if (avisoProvisorio) avisoProvisorio.hidden = contrato.situacao !== "antecipado";
+        if (botaoPdf) botaoPdf.hidden = !podeDemonstrativo(contrato);
         document.getElementById("financeiro-data").max = hojeIso();
         mostrarMensagem("");
         detalhe.scrollIntoView({ block: "nearest" });
@@ -474,7 +482,7 @@
     }
 
     function gerarDemonstrativo() {
-        if (!contratoAberto || !contratoAberto.congelado || !contratoAberto.id) return;
+        if (!podeDemonstrativo(contratoAberto)) return;
         var botao = document.getElementById("financeiro-demonstrativo");
         var id = contratoAberto.id;
         if (botao) botao.disabled = true;
@@ -497,7 +505,9 @@
             link.click();
             link.remove();
             setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
-            mostrarMensagem("Demonstrativo gerado.", false);
+            mostrarMensagem(contratoAberto && contratoAberto.situacao === "antecipado"
+                ? "Demonstrativo provisório gerado."
+                : "Demonstrativo gerado.", false);
         };
         xhr.onerror = function () {
             if (botao) botao.disabled = false;

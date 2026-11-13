@@ -12,13 +12,14 @@ function gerador() {
   return gerar;
 }
 
-function origemOficial(contrato) {
+function origemConsulta(contrato, provisorio) {
   return {
     id: contrato.id,
     nome_cliente: contrato.nome_cliente,
     tipo_evento: contrato.tipo_evento,
     data_evento: contrato.data_evento,
-    congelado: true,
+    congelado: provisorio ? false : true,
+    provisorio: provisorio === true,
     valor_contratado_centavos: contrato.valor_contratado_centavos,
     historico: (Array.isArray(contrato.historico) ? contrato.historico : []).map((item) => ({
       id: item.id,
@@ -34,13 +35,19 @@ function emitir(id) {
   if (!resultado || resultado.status !== 200) {
     return { status: resultado && resultado.status ? resultado.status : 500, motivo: resultado && resultado.motivo };
   }
-  if (!resultado.contrato || resultado.contrato.congelado !== true) {
+  const contrato = resultado.contrato;
+  const oficial = !!(contrato && contrato.congelado === true);
+  const valor = contrato && contrato.valor_contratado_centavos;
+  const provisorio = !oficial && !!(contrato && contrato.situacao === 'antecipado'
+    && Number.isSafeInteger(valor) && valor >= 0);
+  if (!oficial && !provisorio) {
     return { status: 409, motivo: 'congelado' };
   }
-  const documento = gerador()(origemOficial(resultado.contrato), { baixar: false, bytes: true });
+  const documento = gerador()(origemConsulta(contrato, provisorio), { baixar: false, bytes: true });
   return {
     status: 200,
-    id: resultado.contrato.id,
+    id: contrato.id,
+    provisorio: provisorio,
     buffer: Buffer.from(documento.pdf)
   };
 }

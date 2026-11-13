@@ -53,7 +53,8 @@
     }
 
     function normalizar(origem, opcoes) {
-        if (!origem || origem.congelado !== true) {
+        var provisorio = !!(origem && origem.provisorio === true && origem.congelado !== true);
+        if (!origem || (origem.congelado !== true && !provisorio)) {
             var erro = new Error("contrato");
             erro.code = "contrato";
             throw erro;
@@ -90,7 +91,7 @@
         var situacao = "Pendente";
         if (pendente === 0) situacao = "Quitado";
         else if (recebido > 0 && pendente > 0) situacao = "Parcialmente pago";
-        else if (pendente < 0) situacao = "Acima do contratado";
+        else if (pendente < 0) situacao = provisorio ? "Crédito a regularizar" : "Acima do contratado";
         return {
             id: id,
             nome_cliente: String(origem.nome_cliente || "").trim() || "Cliente",
@@ -102,6 +103,7 @@
             historico: historico,
             emissao: emissao,
             situacao: situacao,
+            provisorio: provisorio,
             observacao: String(origem.observacao || "").replace(/\s+/g, " ").trim()
         };
     }
@@ -125,9 +127,9 @@
         var paginaTabela = false;
 
         doc.setProperties({
-            title: "Demonstrativo Financeiro " + dados.id,
+            title: (dados.provisorio ? "Demonstrativo financeiro provisório " : "Demonstrativo Financeiro ") + dados.id,
             author: "Candy Li Doces Finos",
-            subject: "Situação financeira do contrato"
+            subject: dados.provisorio ? "Consulta financeira antes da confirmação do contrato" : "Situação financeira do contrato"
         });
 
         function texto(conteudo, x, yy, tamanho, estilo, cor, alinhamento, max) {
@@ -145,16 +147,16 @@
             doc.setFillColor(196, 165, 173);
             doc.rect(0, 36, 210, 1.4, "F");
             texto("Candy Li Doces Finos", margem, 16, 16, "bold", [250, 248, 246]);
-            texto("Demonstrativo Financeiro", margem, 25, 11, "normal", [196, 165, 173]);
+            texto(dados.provisorio ? "Demonstrativo financeiro provisório" : "Demonstrativo Financeiro", margem, 25, 11, "normal", [196, 165, 173]);
             texto("Emissão " + formatarIso(dados.emissao), 194, 15, 9, "normal", [250, 248, 246], "right");
-            texto("Contrato " + dados.id, 194, 22, 9, "bold", [250, 248, 246], "right");
+            texto((dados.provisorio ? "Orçamento " : "Contrato ") + dados.id, 194, 22, 9, "bold", [250, 248, 246], "right");
         }
 
         function faixaContinuacao() {
             doc.setFillColor(18, 31, 42);
             doc.rect(0, 0, 210, 16, "F");
             texto("Candy Li Doces Finos", margem, 10.5, 10, "bold", [250, 248, 246]);
-            texto("Demonstrativo · " + dados.id, 194, 10.5, 9, "normal", [196, 165, 173], "right");
+            texto((dados.provisorio ? "Provisório · " : "Demonstrativo · ") + dados.id, 194, 10.5, 9, "normal", [196, 165, 173], "right");
             y = 24;
         }
 
@@ -179,6 +181,19 @@
         }
 
         faixaInicial();
+        if (dados.provisorio) {
+            var aviso = "Demonstrativo financeiro provisório — valores sujeitos a alterações até a confirmação do contrato";
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            var avisoLinhas = doc.splitTextToSize(aviso, largura - 6);
+            var avisoAltura = avisoLinhas.length * 4.4 + 5;
+            doc.setFillColor(246, 241, 234);
+            doc.setDrawColor(196, 165, 173);
+            doc.roundedRect(margem, y, largura, avisoAltura, 1.5, 1.5, "FD");
+            doc.setTextColor(18, 31, 42);
+            doc.text(avisoLinhas, margem + 3, y + 5);
+            y += avisoAltura + 6;
+        }
         texto("Dados do evento", margem, y, 12, "bold", [18, 31, 42]);
         y += 7;
         doc.setDrawColor(230, 224, 216);
@@ -204,10 +219,16 @@
 
         texto("Resumo financeiro", margem, y, 12, "bold", [18, 31, 42]);
         y += 4;
+        var saldoCentavos = dados.pendente_centavos;
+        var saldoRotulo = "Saldo pendente";
+        if (dados.provisorio && saldoCentavos < 0) {
+            saldoRotulo = "Crédito a regularizar";
+            saldoCentavos = -saldoCentavos;
+        }
         var cartoes = [
-            ["Valor contratado", formatarCentavos(dados.valor_contratado_centavos)],
+            [dados.provisorio ? "Valor atual do pedido" : "Valor contratado", formatarCentavos(dados.valor_contratado_centavos)],
             ["Valor recebido", formatarCentavos(dados.recebido_centavos)],
-            ["Saldo pendente", formatarCentavos(dados.pendente_centavos)]
+            [saldoRotulo, formatarCentavos(saldoCentavos)]
         ];
         var cartaoLargura = 57;
         cartoes.forEach(function (cartao, indice) {

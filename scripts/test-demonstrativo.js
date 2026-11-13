@@ -204,6 +204,22 @@ async function main() {
     contrato_pdf: { tipo: "contrato", gerado_em: "2026-01-02T00:00:00.000Z" }
   };
   gravar(longo);
+  gravar({
+    id: 940004,
+    cliente: "Cliente Antecipado",
+    nome_cliente: "Cliente Antecipado",
+    tipo_evento: "Debutante",
+    data_evento: hoje,
+    evento_data: hoje,
+    valor_original: 200,
+    valor_final: 200,
+    total: 200,
+    entrada: 25,
+    itens: [{ nome: "Doce antecipado", quantidade: 40, preco_unitario: 5, preco: 5, subtotal: 200 }],
+    observacoes: "nota interna antecipada",
+    cpf: "cpf-antecipado",
+    cliente_endereco_linha: "rua antecipada"
+  });
   db.close();
 
   assert((await pedir("GET", "/api/financeiro/contratos/940001/demonstrativo")).status === 401, "pdf sem sessão");
@@ -288,6 +304,7 @@ async function main() {
   assert(pdfVazio.indexOf("Cliente Demonstrativo") !== -1, "cliente");
   assert(pdfVazio.indexOf("Casamento") !== -1, "evento");
   assert(pdfVazio.indexOf("Emissão " + dataBr(hoje)) !== -1, "emissao");
+  assert(pdfVazio.indexOf("Valor contratado") !== -1 && pdfVazio.indexOf("provis") === -1, "oficial sem aviso provisorio");
   assert(pdfVazio.indexOf("R$ 100,00") !== -1 && pdfVazio.indexOf("R$ 0,00") !== -1, "valores oficiais");
   assert(pdfVazio.indexOf("R$ 0,01") === -1 && pdfVazio.indexOf("999.999") === -1, "valor manipulado");
   assert(pdfVazio.indexOf("Pendente") !== -1, "situacao pendente");
@@ -367,7 +384,7 @@ async function main() {
   assert(pdfVarias.indexOf("Página 1 de 2") !== -1, "numeracao");
 
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/index.html" });
-  await avaliar("document.getElementById('indicador-orcamentos').textContent === '3'");
+  await avaliar("document.getElementById('indicador-orcamentos').textContent === '4'");
   await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/agenda.html" });
   await avaliar("!!document.getElementById('agenda-grade') && document.querySelectorAll('.gestao-dia').length >= 28");
   const home = await pedir("GET", "/");
@@ -379,6 +396,103 @@ async function main() {
   assert(contratoPdf.status === 200 && contratoPdf.body.indexOf("gerarContratoPDF") !== -1, "gerador de contrato");
   assert(orcamentoPdf.status === 200 && orcamentoPdf.body.indexOf("function") !== -1, "gerador de orcamento");
   assert(geradorPublico.status === 404 && geradorInterno.status === 404, "pdf fora do publico");
+
+  const orcamentoAntes = JSON.parse((await pedir("GET", "/api/orcamentos/940004", sessao)).body);
+  assert(!orcamentoAntes.gestao_contrato, "antecipado ja confirmado");
+  const primeiro = await pedir("POST", "/api/financeiro/contratos/940004/pagamentos", Object.assign({
+    body: pagamento(4000, "pix", "chave-antecipado-parcial", "2026-10-01")
+  }, sessao));
+  assert(primeiro.status === 201, "pagamento antecipado " + primeiro.body);
+  const idAntecipado = JSON.parse(primeiro.body).pagamento.id;
+  const parcialAntecipado = await baixarPdf(940004);
+  fs.writeFileSync(path.join(preview, "antecipado-parcial.pdf"), parcialAntecipado);
+  const textoParcial = textoPdf(parcialAntecipado);
+  assert(textoParcial.indexOf("Cliente Antecipado") !== -1, "cliente antecipado");
+  assert(textoParcial.indexOf("Orçamento 940004") !== -1, "orcamento antecipado");
+  assert(textoParcial.indexOf("Contrato 940004") === -1, "nao chama de contrato");
+  assert(textoParcial.indexOf("Debutante") !== -1, "evento antecipado");
+  assert(textoParcial.indexOf("Valor atual do pedido") !== -1, "valor atual");
+  assert(textoParcial.indexOf("Valor contratado") === -1, "sem rotulo oficial");
+  assert(textoParcial.indexOf("provis") !== -1 && textoParcial.indexOf("valores sujeitos a altera") !== -1, "aviso provisorio");
+  assert(textoParcial.indexOf("Emissão " + dataBr(hoje)) !== -1, "emissao antecipada");
+  assert(textoParcial.indexOf("R$ 200,00") !== -1 && textoParcial.indexOf("R$ 40,00") !== -1 && textoParcial.indexOf("R$ 160,00") !== -1, "parcial antecipado");
+  assert(textoParcial.indexOf("Parcialmente pago") !== -1 && textoParcial.indexOf("PIX") !== -1, "situacao antecipada");
+  assert(textoParcial.indexOf("01/10/2026") !== -1, "data do pagamento");
+  ["nota interna antecipada", "cpf-antecipado", "rua antecipada", "Entrada", "R$ 25,00"].forEach(function (proibido) {
+    assert(textoParcial.indexOf(proibido) === -1, "dado fora do provisorio " + proibido);
+  });
+
+  const correcao = await pedir("POST", "/api/financeiro/contratos/940004/pagamentos/" + idAntecipado + "/corrigir", Object.assign({
+    body: { valor_centavos: 1500, pago_em: "2026-10-01", forma: "pix", motivo: "Valor lançado a mais", confirmacao: true }
+  }, sessao));
+  assert(correcao.status === 200, "correcao antecipada " + correcao.body);
+  const corrigido = await baixarPdf(940004);
+  const textoCorrigido = textoPdf(corrigido);
+  assert(textoCorrigido.indexOf("R$ 15,00") !== -1 && textoCorrigido.indexOf("R$ 185,00") !== -1, "valores corrigidos");
+  assert(textoCorrigido.indexOf("R$ 40,00") === -1 && textoCorrigido.indexOf("Valor lançado a mais") === -1, "correcao nao vaza");
+
+  assert((await pedir("POST", "/api/financeiro/contratos/940004/pagamentos", Object.assign({
+    body: pagamento(22000, "transferencia", "chave-antecipado-credito", "2026-10-20")
+  }, sessao))).status === 201, "pagamento acima do pedido");
+  const credito = await baixarPdf(940004);
+  fs.writeFileSync(path.join(preview, "antecipado-credito.pdf"), credito);
+  const textoCredito = textoPdf(credito);
+  assert(textoCredito.indexOf("Crédito a regularizar") !== -1 || textoCredito.indexOf("regularizar") !== -1, "credito");
+  assert(textoCredito.indexOf("R$ 235,00") !== -1 && textoCredito.indexOf("R$ 35,00") !== -1, "totais do credito");
+  assert(textoCredito.indexOf("R$ 220,00") !== -1 && textoCredito.indexOf("R$ 15,00") !== -1, "historico corrigido");
+  assert(textoCredito.indexOf("01/10/2026") < textoCredito.indexOf("20/10/2026"), "ordem do credito");
+  assert(textoCredito.indexOf("Transfer") !== -1, "forma do credito");
+
+  const orcamentoDepois = JSON.parse((await pedir("GET", "/api/orcamentos/940004", sessao)).body);
+  const detalheDepoisPdf = JSON.parse((await pedir("GET", "/api/financeiro/contratos/940004", { cookie: cookie })).body);
+  assert(!orcamentoDepois.gestao_contrato && detalheDepoisPdf.situacao === "antecipado" && detalheDepoisPdf.congelado === false, "pdf nao confirmou");
+  assert(detalheDepoisPdf.valor_contratado_centavos === 20000 && detalheDepoisPdf.recebido_centavos === 23500, "pdf nao alterou saldo");
+  assert(detalheDepoisPdf.historico.length === 2 && detalheDepoisPdf.entrada_prevista_centavos === 2500, "entrada continua prevista");
+  assert(JSON.stringify(orcamentoDepois.itens) === JSON.stringify(orcamentoAntes.itens), "pedido mudou");
+  const documentos = new DatabaseSync(tmpDb, { readOnly: true });
+  const oficiais = Number(documentos.prepare("SELECT COUNT(*) AS n FROM documentos WHERE tipo = 'demonstrativo'").get().n);
+  documentos.close();
+  assert(oficiais === 0, "provisorio virou documento oficial");
+
+  async function verBotao(largura, altura, mobile) {
+    await enviar("Emulation.setDeviceMetricsOverride", {
+      width: largura,
+      height: altura,
+      deviceScaleFactor: 1,
+      mobile: mobile
+    });
+    await enviar("Page.navigate", { url: "http://127.0.0.1:" + PORT + "/admin/gestao/financeiro.html" });
+    await avaliar("[...document.querySelectorAll('#financeiro-antecipado-corpo tr')].some((tr) => tr.textContent.indexOf('Cliente Antecipado') !== -1)");
+    await avaliar(`(() => {
+      const botao = [...document.querySelectorAll("#financeiro-antecipado-corpo button")].find((el) => el.closest("tr").textContent.indexOf("Cliente Antecipado") !== -1);
+      botao.click();
+      return true;
+    })()`);
+    const medida = await avaliar(`(() => {
+      const botao = document.getElementById("financeiro-demonstrativo");
+      const aviso = document.getElementById("financeiro-provisorio");
+      if (!botao || botao.hidden || !aviso || aviso.hidden) return "";
+      const caixa = botao.getBoundingClientRect();
+      if (caixa.width < 40 || caixa.height < 24) return "";
+      if (caixa.right > window.innerWidth + 1 || caixa.left < -1) return "";
+      if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) return "";
+      return larguraMarcador + ":" + Math.round(caixa.width) + "x" + Math.round(caixa.height);
+    })()`.replace("larguraMarcador", String(largura)));
+    assert(String(medida).indexOf(String(largura) + ":") === 0, "botao " + largura + " " + medida);
+  }
+  await verBotao(1280, 800, false);
+  await verBotao(390, 844, true);
+  await avaliar(`(() => {
+    document.getElementById("financeiro-demonstrativo").click();
+    return true;
+  })()`);
+  const mensagemProvisoria = await avaliar(`(() => {
+    const msg = document.getElementById("financeiro-mensagem");
+    if (msg && !msg.hidden && msg.textContent) return msg.textContent;
+    return "";
+  })()`);
+  assert(mensagemProvisoria === "Demonstrativo provisório gerado.", "botao provisorio " + mensagemProvisoria);
+  await enviar("Emulation.clearDeviceMetricsOverride");
 
   const depois = assinaturaReal();
   assert(depois.hash === antes.hash && depois.contratos === antes.contratos && depois.pagamentos === antes.pagamentos && depois.ic === "ok", "dados reais mudaram");
